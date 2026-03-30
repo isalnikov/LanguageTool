@@ -328,8 +328,8 @@ const DictionaryDB = (function() {
       });
     }
 
-    async bulkInsert(storeName, words, batchSize = 10000) {
-      logger.log(`bulkInsert: ${storeName}, ${words.length} слов, batchSize=${batchSize}`);
+    async bulkInsert(storeName, words, batchSize = 5000) {
+      logger.log(`=== bulkInsert: ${storeName}, ${words.length} слов, batchSize=${batchSize} ===`);
       
       if (!this.db) {
         logger.log('База данных не открыта, открываем...');
@@ -337,65 +337,105 @@ const DictionaryDB = (function() {
       }
 
       try {
-        const transaction = this.db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-
-        logger.log('Очистка хранилища перед вставкой...');
+        // Очищаем хранилище перед вставкой
+        logger.log('Очистка хранилища...');
+        const clearTx = this.db.transaction([storeName], 'readwrite');
+        const clearStore = clearTx.objectStore(storeName);
+        
         await new Promise((resolve, reject) => {
-          const clearRequest = store.clear();
-          clearRequest.onsuccess = () => {
-            logger.log('Хранилище очищено');
+          clearTx.oncomplete = () => {
+            logger.log('✓ Хранилище очищено');
             resolve();
           };
-          clearRequest.onerror = (e) => {
+          clearTx.onerror = (e) => {
             logger.error('Ошибка очистки:', e);
             reject(e);
           };
+          clearTx.onabort = (e) => {
+            logger.error('Очистка прервана:', e);
+            reject(e);
+          };
+          clearStore.clear();
         });
 
+        // Вставляем слова батчами с отдельной транзакцией для каждого
         logger.log(`Вставка ${words.length} слов батчами по ${batchSize}...`);
+        let totalInserted = 0;
 
         for (let i = 0; i < words.length; i += batchSize) {
           const batch = words.slice(i, i + batchSize);
+          const batchNum = Math.floor(i / batchSize) + 1;
+          const totalBatches = Math.ceil(words.length / batchSize);
           
-          logger.log(`Обработка батча ${i/batchSize + 1}: ${batch.length} слов`);
+          logger.log(`Батч ${batchNum}/${totalBatches}: ${batch.length} слов`);
           
-          const batchPromises = batch.map(word => {
-            return new Promise((resolve, reject) => {
+          // Создаём новую транзакцию для каждого батча
+          const tx = this.db.transaction([storeName], 'readwrite', {
+            durability: 'relaxed'
+          });
+          const store = tx.objectStore(storeName);
+          
+          let batchSuccess = 0;
+          let batchError = 0;
+          
+          await new Promise((resolve, reject) => {
+            tx.oncomplete = () => {
+              totalInserted += batchSuccess;
+              logger.log(`✓ Батч ${batchNum} завершен: ${batchSuccess} добавлено, ${batchError} ошибок`);
+              resolve();
+            };
+            
+            tx.onerror = (e) => {
+              logger.error(`Ошибка транзакции батча ${batchNum}:`, e);
+              logger.error('Error details:', tx.error);
+              reject(tx.error || e);
+            };
+            
+            tx.onabort = (e) => {
+              logger.error(`Транзакция батча ${batchNum} прервана:`, e);
+              reject(e);
+            };
+            
+            // Добавляем слова
+            for (let j = 0; j < batch.length; j++) {
               try {
-                const request = store.add({ word: word.toLowerCase() });
-                request.onsuccess = resolve;
+                const word = batch[j].toLowerCase().trim();
+                if (!word) continue;
+                
+                const request = store.add({ word });
+                
+                request.onsuccess = () => {
+                  batchSuccess++;
+                };
+                
                 request.onerror = (e) => {
-                  logger.error('Ошибка добавления слова:', e);
-                  reject(e);
+                  batchError++;
+                  // Не прерываем весь батч из-за одной ошибки
+                  if (batchError % 100 === 0) {
+                    logger.warn(`Батч ${batchNum}: ${batchError} ошибок добавления`);
+                  }
                 };
               } catch (e) {
-                logger.error('Исключение при добавлении слова:', e);
-                reject(e);
+                batchError++;
+                logger.error(`Исключение при добавлении слова "${batch[j]}":`, e);
               }
-            });
+            }
           });
-
-          await Promise.all(batchPromises);
-          logger.log(`Батч обработан: ${Math.min(i + batchSize, words.length)} из ${words.length}`);
+          
+          // Небольшая пауза между батчами для стабильности
+          if (i + batchSize < words.length) {
+            await new Promise(r => setTimeout(r, 10));
+          }
         }
 
-        return new Promise((resolve, reject) => {
-          transaction.oncomplete = () => {
-            logger.log(`bulkInsert завершен: ${words.length} слов`);
-            resolve();
-          };
-          transaction.onerror = (e) => {
-            logger.error('Ошибка транзакции:', e);
-            reject(e);
-          };
-          transaction.onabort = (e) => {
-            logger.error('Транзакция прервана:', e);
-            reject(e);
-          };
-        });
+        logger.log(`=== bulkInsert завершен: ${totalInserted} слов вставлено ===`);
+        
       } catch (error) {
-        logger.error('Ошибка bulkInsert:', error);
+        logger.error('=== ОШИБКА bulkInsert ===');
+        logger.error('Ошибка:', error);
+        logger.error('Type:', typeof error);
+        logger.error('Message:', error.message);
+        logger.error('Stack:', error.stack);
         throw error;
       }
     }
