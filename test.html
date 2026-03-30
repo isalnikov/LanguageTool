@@ -455,7 +455,22 @@
     // Проверка статуса словарей
     async function updateStatus() {
       try {
-        const status = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+        // Проверяем доступность chrome.runtime
+        if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+          console.warn('[test.html] chrome.runtime недоступен');
+          setUnavailableStatus();
+          return;
+        }
+        
+        const status = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
         
         const indicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
@@ -463,26 +478,54 @@
         const ruCount = document.getElementById('ru-count');
         const totalCount = document.getElementById('total-count');
         
-        if (status.loaded) {
-          indicator.classList.add('ready');
-          statusText.textContent = 'Словари загружены';
-          enCount.textContent = (status.enCount || 0).toLocaleString();
-          ruCount.textContent = (status.ruCount || 0).toLocaleString();
-          totalCount.textContent = (status.total || 0).toLocaleString();
+        if (status) {
+          const enLoaded = status.en?.loaded || false;
+          const ruLoaded = status.ru?.loaded || false;
+          
+          if (enLoaded || ruLoaded) {
+            indicator.classList.add('ready');
+            statusText.textContent = 'Словари загружены';
+            enCount.textContent = (status.en?.wordCount || 0).toLocaleString();
+            ruCount.textContent = (status.ru?.wordCount || 0).toLocaleString();
+            totalCount.textContent = ((status.en?.wordCount || 0) + (status.ru?.wordCount || 0)).toLocaleString();
+          } else {
+            indicator.classList.remove('ready');
+            statusText.textContent = 'Словари не загружены';
+            enCount.textContent = '0';
+            ruCount.textContent = '0';
+            totalCount.textContent = '0';
+          }
         } else {
-          statusText.textContent = 'Загрузка словарей...';
+          setUnavailableStatus();
         }
       } catch (error) {
-        console.error('Ошибка получения статуса:', error);
-        document.getElementById('status-text').textContent = 'Ошибка подключения';
+        console.error('[test.html] Ошибка получения статуса:', error);
+        setUnavailableStatus();
       }
+    }
+    
+    function setUnavailableStatus() {
+      const indicator = document.getElementById('status-indicator');
+      const statusText = document.getElementById('status-text');
+      const enCount = document.getElementById('en-count');
+      const ruCount = document.getElementById('ru-count');
+      const totalCount = document.getElementById('total-count');
+      
+      indicator.classList.remove('ready');
+      statusText.textContent = 'Расширение не активно';
+      enCount.textContent = '-';
+      ruCount.textContent = '-';
+      totalCount.textContent = '-';
     }
 
     // Обновление статуса при загрузке
-    updateStatus();
-    
-    // Обновление статуса каждые 5 секунд
-    setInterval(updateStatus, 5000);
+    if (chrome && chrome.runtime) {
+      updateStatus();
+      setInterval(updateStatus, 5000);
+    } else {
+      console.warn('[test.html] chrome.runtime недоступен - страница открыта без расширения');
+      setUnavailableStatus();
+    }
   </script>
 </body>
 </html>
