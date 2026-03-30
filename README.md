@@ -73,7 +73,24 @@ git clone https://github.com/isalnikov/LanguageTool.git
 cd LanguageTool
 ```
 
-### 2. Загрузка полных словарей
+### 2. Тестирование
+
+Откройте тестовую страницу для проверки работы расширения:
+
+```bash
+# Откройте в Chrome
+open test.html
+
+# Или перетащите test.html в браузер
+```
+
+Тестовая страница содержит:
+- Все типы input полей (text, email, password, search, url, tel)
+- Textarea с overlay подсветкой
+- Contenteditable элементы
+- Тесты для английского и русского языков
+
+### 3. Загрузка полных словарей
 
 Для работы с полными словарями скачайте файлы `words.txt`:
 
@@ -87,7 +104,7 @@ cd LanguageTool
 # Поместите файл в vocab/ru/words.txt
 ```
 
-### 3. Установка в Chrome
+### 4. Установка в Chrome
 
 1. Откройте Chrome и перейдите на `chrome://extensions/`
 2. Включите **Режим разработчика** (переключатель в правом верхнем углу)

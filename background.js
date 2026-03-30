@@ -3,9 +3,10 @@
  * Управляет загрузкой словарей, обработкой запросов и контекстным меню
  */
 
-import { dictionaryDB } from './dictionary-db.js';
-import { Trie, DictionaryManager } from './trie.js';
-import { Logger } from './logger.js';
+// Используем глобальный объект LanguageTool
+const { DictionaryDB, STORE_NAMES } = window.LanguageTool;
+const { DictionaryManager } = window.LanguageTool;
+const { Logger } = window.LanguageTool;
 
 const logger = new Logger('background');
 
@@ -23,12 +24,12 @@ async function init() {
   
   try {
     // Открываем IndexedDB
-    await dictionaryDB.open();
+    await DictionaryDB.open();
     logger.log('IndexedDB открыта');
     
     // Проверяем, загружены ли словари в IndexedDB
-    const enCount = await dictionaryDB.getCount('english_words');
-    const ruCount = await dictionaryDB.getCount('russian_words');
+    const enCount = await DictionaryDB.getCount('english_words');
+    const ruCount = await DictionaryDB.getCount('russian_words');
     
     logger.log(`Словари в IndexedDB: en=${enCount}, ru=${ruCount}`);
     
@@ -58,7 +59,7 @@ async function loadDictionariesFromFiles() {
     const enText = await enResponse.text();
     const enWords = enText.split('\n').filter(w => w.trim());
     
-    await dictionaryDB.bulkInsert('english_words', enWords);
+    await DictionaryDB.bulkInsert('english_words', enWords);
     logger.log(`Английский словарь загружен: ${enWords.length} слов`);
     
     // Загружаем русский словарь
@@ -67,7 +68,7 @@ async function loadDictionariesFromFiles() {
     const ruText = await ruResponse.text();
     const ruWords = ruText.split('\n').filter(w => w.trim());
     
-    await dictionaryDB.bulkInsert('russian_words', ruWords);
+    await DictionaryDB.bulkInsert('russian_words', ruWords);
     logger.log(`Русский словарь загружен: ${ruWords.length} слов`);
     
     // После загрузки в DB, загружаем в Trie
@@ -80,13 +81,9 @@ async function loadDictionariesFromFiles() {
 
 /**
  * Загрузка словарей из IndexedDB в Trie (в память)
- * Для оптимизации загружаем только часто используемые слова
  */
 async function loadDictionariesIntoTrie() {
   try {
-    // Для производительности загружаем словари батчами
-    // В реальной реализации можно использовать стратегию ленивой загрузки
-    
     logger.log('Загрузка словарей в память (Trie)...');
     
     // Загружаем английский словарь
@@ -114,13 +111,11 @@ async function loadDictionariesIntoTrie() {
 
 /**
  * Загрузка всех слов из IndexedDB
- * @param {string} storeName - имя хранилища
- * @returns {Promise<string[]>}
  */
 async function loadWordsFromDB(storeName) {
   return new Promise((resolve, reject) => {
     const words = [];
-    const transaction = dictionaryDB.db.transaction([storeName], 'readonly');
+    const transaction = DictionaryDB.db.transaction([storeName], 'readonly');
     const store = transaction.objectStore(storeName);
     const request = store.openCursor();
 
@@ -152,7 +147,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           logger.error('Ошибка проверки слова:', err);
           sendResponse({ isValid: false, error: err.message });
         });
-      return true; // Асинхронный ответ
+      return true;
     
     case 'GET_SUGGESTIONS':
       handleGetSuggestions(message.word)
@@ -189,8 +184,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 /**
  * Обработка проверки слова
- * @param {string} word - слово для проверки
- * @returns {Promise<{isValid: boolean, lang: string|null}>}
  */
 async function handleCheckWord(word) {
   if (!word || word.trim() === '') {
@@ -205,8 +198,6 @@ async function handleCheckWord(word) {
 
 /**
  * Обработка получения подсказок
- * @param {string} word - слово для подсказок
- * @returns {Promise<string[]>}
  */
 async function handleGetSuggestions(word) {
   if (!word || word.trim() === '') {
@@ -221,7 +212,6 @@ async function handleGetSuggestions(word) {
 
 /**
  * Обработка получения статуса
- * @returns {Promise<{loaded: boolean, enCount: number, ruCount: number}>}
  */
 async function handleGetStatus() {
   const enCount = dictManager.getDictionarySize('en');
@@ -237,7 +227,6 @@ async function handleGetStatus() {
 
 /**
  * Обработка перезагрузки словарей
- * @returns {Promise<{success: boolean}>}
  */
 async function handleReloadDictionaries() {
   try {
@@ -286,10 +275,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   logger.log('Клик по контекстному меню:', info.menuItemId);
   
   if (info.menuItemId === 'languagetool-ignore') {
-    // Добавляем слово в исключения
     addWordToIgnore(info.selectionText);
   } else if (info.menuItemId.startsWith('languagetool-replace-')) {
-    // Замена слова
     const replacement = info.menuItemId.replace('languagetool-replace-', '');
     replaceWordInTab(tab.id, info.selectionText, replacement);
   }
@@ -297,7 +284,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 /**
  * Добавление слова в список исключений
- * @param {string} word - слово
  */
 async function addWordToIgnore(word) {
   const storage = await chrome.storage.local.get(['ignoredWords']);
@@ -312,9 +298,6 @@ async function addWordToIgnore(word) {
 
 /**
  * Замена слова в активной вкладке
- * @param {number} tabId - ID вкладки
- * @param {string} oldWord - старое слово
- * @param {string} newWord - новое слово
  */
 function replaceWordInTab(tabId, oldWord, newWord) {
   chrome.tabs.sendMessage(tabId, {

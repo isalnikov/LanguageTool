@@ -3,7 +3,8 @@
  * Работает со всеми текстовыми полями на странице
  */
 
-import { Logger } from './logger.js';
+// Используем глобальный объект LanguageTool
+const { Logger } = window.LanguageTool;
 
 const logger = new Logger('content');
 
@@ -11,19 +12,17 @@ const logger = new Logger('content');
 class SpellChecker {
   constructor() {
     this.activeElement = null;
-    this.checkDelay = 300; // Задержка перед проверкой (ms)
+    this.checkDelay = 300;
     this.checkTimer = null;
-    this.misspelledWords = new Map(); // Карта ошибочных слов
+    this.misspelledWords = new Map();
     this.isInitialized = false;
-    this.ignoredWords = new Set(); // Слова в исключениях
+    this.ignoredWords = new Set();
     
-    // Привязываем контекст
     this.handleInput = this.handleInput.bind(this);
     this.handleFocus = this.handleFocus.bind(this);
     this.handleBlur = this.handleBlur.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     
-    // Загружаем исключения
     this.loadIgnoredWords();
   }
 
@@ -31,22 +30,13 @@ class SpellChecker {
    * Инициализация
    */
   async init() {
-    if (this.isInitialized) {
-      return;
-    }
+    if (this.isInitialized) return;
 
     logger.log('Инициализация Content Script...');
     
-    // Загружаем список исключений
     await this.loadIgnoredWords();
-    
-    // Добавляем слушатели событий
     this.attachEventListeners();
-    
-    // Создаём tooltip
     this.createTooltip();
-    
-    // Создаём popup для замены слов
     this.createReplacePopup();
     
     this.isInitialized = true;
@@ -71,13 +61,11 @@ class SpellChecker {
    * Добавление слушателей событий
    */
   attachEventListeners() {
-    // Глобальные слушатели на document
     document.addEventListener('focusin', this.handleFocus, true);
     document.addEventListener('focusout', this.handleBlur, true);
     document.addEventListener('input', this.handleInput, true);
     document.addEventListener('keydown', this.handleKeyDown, true);
     
-    // Слушатель сообщений от background
     chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
     
     logger.log('Слушатели событий добавлены');
@@ -85,7 +73,6 @@ class SpellChecker {
 
   /**
    * Обработка фокуса на элементе
-   * @param {FocusEvent} event
    */
   handleFocus(event) {
     const target = event.target;
@@ -93,15 +80,12 @@ class SpellChecker {
     if (this.isTextInput(target)) {
       this.activeElement = target;
       logger.log('Фокус на текстовом поле:', target.tagName);
-      
-      // Проверяем текст при фокусе
       this.scheduleCheck(target.value);
     }
   }
 
   /**
    * Обработка потери фокуса
-   * @param {FocusEvent} event
    */
   handleBlur(event) {
     if (this.activeElement === event.target) {
@@ -112,7 +96,6 @@ class SpellChecker {
 
   /**
    * Обработка ввода текста
-   * @param {InputEvent} event
    */
   handleInput(event) {
     const target = event.target;
@@ -124,10 +107,8 @@ class SpellChecker {
 
   /**
    * Обработка нажатий клавиш
-   * @param {KeyboardEvent} event
    */
   handleKeyDown(event) {
-    // Esc закрывает tooltip и popup
     if (event.key === 'Escape') {
       this.hideTooltip();
       this.hideReplacePopup();
@@ -136,8 +117,6 @@ class SpellChecker {
 
   /**
    * Проверка, является ли элемент текстовым полем
-   * @param {HTMLElement} element
-   * @returns {boolean}
    */
   isTextInput(element) {
     if (!element) return false;
@@ -145,28 +124,19 @@ class SpellChecker {
     const tagName = element.tagName.toLowerCase();
     const type = element.type?.toLowerCase();
     
-    // Input поля
     if (tagName === 'input') {
       const textTypes = ['text', 'search', 'email', 'url', 'password', 'tel'];
       return textTypes.includes(type) || !type;
     }
     
-    // Textarea
-    if (tagName === 'textarea') {
-      return true;
-    }
-    
-    // Content editable элементы
-    if (element.isContentEditable) {
-      return true;
-    }
+    if (tagName === 'textarea') return true;
+    if (element.isContentEditable) return true;
     
     return false;
   }
 
   /**
    * Планирование проверки текста
-   * @param {string} text
    */
   scheduleCheck(text) {
     this.clearCheckTimer();
@@ -188,24 +158,17 @@ class SpellChecker {
 
   /**
    * Проверка текста на орфографические ошибки
-   * @param {string} text
    */
   async checkText(text) {
-    if (!text || !this.activeElement) {
-      return;
-    }
+    if (!text || !this.activeElement) return;
 
     logger.log('Проверка текста...');
     
-    // Разбиваем текст на слова
     const words = this.extractWords(text);
     const misspelled = [];
     
-    // Проверяем каждое слово
     for (const word of words) {
-      if (this.ignoredWords.has(word.toLowerCase())) {
-        continue; // Пропускаем слова из исключений
-      }
+      if (this.ignoredWords.has(word.toLowerCase())) continue;
       
       const result = await this.checkWord(word);
       if (!result.isValid) {
@@ -217,12 +180,10 @@ class SpellChecker {
       }
     }
     
-    // Сохраняем информацию об ошибках
     this.misspelledWords = new Map(
       misspelled.map(m => [m.word, m])
     );
     
-    // Подсвечиваем ошибки в textarea
     if (this.activeElement.tagName.toLowerCase() === 'textarea') {
       this.highlightErrors(text, misspelled);
     }
@@ -232,11 +193,8 @@ class SpellChecker {
 
   /**
    * Извлечение слов из текста
-   * @param {string} text
-   * @returns {string[]}
    */
   extractWords(text) {
-    // Разбиваем по пробелам и знакам препинания
     return text
       .split(/[\s,.;:!?()"'`\-–—]+/)
       .filter(w => w.trim().length > 0);
@@ -244,8 +202,6 @@ class SpellChecker {
 
   /**
    * Проверка одного слова через background script
-   * @param {string} word
-   * @returns {Promise<{isValid: boolean, lang: string|null}>}
    */
   checkWord(word) {
     return new Promise((resolve) => {
@@ -265,8 +221,6 @@ class SpellChecker {
 
   /**
    * Получение подсказок для слова
-   * @param {string} word
-   * @returns {Promise<string[]>}
    */
   getSuggestions(word) {
     return new Promise((resolve) => {
@@ -286,12 +240,8 @@ class SpellChecker {
 
   /**
    * Подсветка ошибок в textarea
-   * @param {string} text
-   * @param {Array} misspelled
    */
   highlightErrors(text, misspelled) {
-    // Для textarea используем overlay подход
-    // Создаём или обновляем overlay
     let overlay = this.activeElement.parentElement?.querySelector('.spell-check-overlay');
     
     if (!overlay) {
@@ -300,17 +250,12 @@ class SpellChecker {
       this.activeElement.parentElement?.insertBefore(overlay, this.activeElement);
     }
     
-    // Синхронизируем стили
     this.syncOverlayStyles(this.activeElement, overlay);
-    
-    // Подсвечиваем ошибки
     this.renderErrors(overlay, text, misspelled);
   }
 
   /**
    * Синхронизация стилей overlay с textarea
-   * @param {HTMLElement} textarea
-   * @param {HTMLElement} overlay
    */
   syncOverlayStyles(textarea, overlay) {
     const styles = window.getComputedStyle(textarea);
@@ -332,14 +277,10 @@ class SpellChecker {
 
   /**
    * Рендеринг ошибок на overlay
-   * @param {HTMLElement} overlay
-   * @param {string} text
-   * @param {Array} misspelled
    */
   renderErrors(overlay, text, misspelled) {
     let html = text;
     
-    // Сортируем по длине (сначала длинные слова)
     const sortedMisspelled = [...misspelled].sort((a, b) => b.word.length - a.word.length);
     
     for (const error of sortedMisspelled) {
@@ -355,8 +296,6 @@ class SpellChecker {
 
   /**
    * Экранирование спецсимволов для regex
-   * @param {string} string
-   * @returns {string}
    */
   escapeRegex(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -366,9 +305,7 @@ class SpellChecker {
    * Создание tooltip
    */
   createTooltip() {
-    if (document.getElementById('spell-check-tooltip')) {
-      return;
-    }
+    if (document.getElementById('spell-check-tooltip')) return;
 
     const tooltip = document.createElement('div');
     tooltip.id = 'spell-check-tooltip';
@@ -376,16 +313,11 @@ class SpellChecker {
     tooltip.style.display = 'none';
     
     document.body.appendChild(tooltip);
-    
-    // Обработчики для tooltip
     tooltip.addEventListener('click', this.handleTooltipClick.bind(this));
   }
 
   /**
    * Показ tooltip с подсказками
-   * @param {string} word
-   * @param {number} x
-   * @param {number} y
    */
   async showTooltip(word, x, y) {
     const tooltip = document.getElementById('spell-check-tooltip');
@@ -393,7 +325,6 @@ class SpellChecker {
     
     logger.log('Показ tooltip для слова:', word);
     
-    // Получаем подсказки
     const suggestions = await this.getSuggestions(word);
     
     if (suggestions.length === 0) {
@@ -409,19 +340,15 @@ class SpellChecker {
       `;
     }
     
-    // Позиционируем tooltip
     tooltip.style.display = 'block';
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
     
-    // Проверяем, чтобы tooltip не выходил за границы экрана
     this.adjustTooltipPosition(tooltip);
   }
 
   /**
    * Экранирование атрибутов HTML
-   * @param {string} string
-   * @returns {string}
    */
   escapeAttr(string) {
     return string
@@ -434,7 +361,6 @@ class SpellChecker {
 
   /**
    * Корректировка позиции tooltip
-   * @param {HTMLElement} tooltip
    */
   adjustTooltipPosition(tooltip) {
     const rect = tooltip.getBoundingClientRect();
@@ -462,14 +388,11 @@ class SpellChecker {
    */
   hideTooltip() {
     const tooltip = document.getElementById('spell-check-tooltip');
-    if (tooltip) {
-      tooltip.style.display = 'none';
-    }
+    if (tooltip) tooltip.style.display = 'none';
   }
 
   /**
    * Обработка клика по tooltip
-   * @param {MouseEvent} event
    */
   handleTooltipClick(event) {
     const suggestionItem = event.target.closest('.suggestion-item');
@@ -486,9 +409,7 @@ class SpellChecker {
    * Создание popup для замены слов
    */
   createReplacePopup() {
-    if (document.getElementById('spell-check-popup')) {
-      return;
-    }
+    if (document.getElementById('spell-check-popup')) return;
 
     const popup = document.createElement('div');
     popup.id = 'spell-check-popup';
@@ -514,15 +435,12 @@ class SpellChecker {
     `;
     
     document.body.appendChild(popup);
-    
-    // Обработчики
     popup.querySelector('.popup-close').addEventListener('click', () => this.hideReplacePopup());
     popup.addEventListener('click', this.handlePopupClick.bind(this));
   }
 
   /**
    * Показ popup для замены
-   * @param {string} word
    */
   async showReplacePopup(word) {
     const popup = document.getElementById('spell-check-popup');
@@ -549,7 +467,6 @@ class SpellChecker {
 
   /**
    * Центрирование popup
-   * @param {HTMLElement} popup
    */
   centerPopup(popup) {
     const rect = popup.querySelector('.popup-content').getBoundingClientRect();
@@ -562,23 +479,18 @@ class SpellChecker {
    */
   hideReplacePopup() {
     const popup = document.getElementById('spell-check-popup');
-    if (popup) {
-      popup.style.display = 'none';
-    }
+    if (popup) popup.style.display = 'none';
   }
 
   /**
    * Обработка клика по popup
-   * @param {MouseEvent} event
    */
   handlePopupClick(event) {
-    // Клик по фону закрывает popup
     if (event.target === document.getElementById('spell-check-popup')) {
       this.hideReplacePopup();
       return;
     }
     
-    // Клик по кнопке предложения
     const suggestionBtn = event.target.closest('.suggestion-btn');
     if (suggestionBtn) {
       const replacement = suggestionBtn.dataset.word;
@@ -590,7 +502,6 @@ class SpellChecker {
 
   /**
    * Замена слова в активном элементе
-   * @param {string} replacement
    */
   replaceWord(replacement) {
     if (!this.activeElement) {
@@ -606,7 +517,6 @@ class SpellChecker {
       return;
     }
     
-    // Заменяем первое вхождение
     const newText = text.replace(
       new RegExp(`\\b${this.escapeRegex(misspelledWord)}\\b`),
       replacement
@@ -618,16 +528,11 @@ class SpellChecker {
       this.activeElement.textContent = newText;
     }
     
-    // Удаляем из карты ошибок
     this.misspelledWords.delete(misspelledWord);
     
-    // Удаляем overlay
     const overlay = this.activeElement.parentElement?.querySelector('.spell-check-overlay');
-    if (overlay) {
-      overlay.remove();
-    }
+    if (overlay) overlay.remove();
     
-    // Отправляем событие input
     this.activeElement.dispatchEvent(new Event('input', { bubbles: true }));
     
     logger.log(`Слово "${misspelledWord}" заменено на "${replacement}"`);
@@ -635,7 +540,6 @@ class SpellChecker {
 
   /**
    * Обработка сообщений
-   * @param {Object} message
    */
   handleMessage(message) {
     logger.log('Получено сообщение:', message.type);
@@ -649,8 +553,6 @@ class SpellChecker {
 
   /**
    * Обработка сообщения замены слова
-   * @param {string} oldWord
-   * @param {string} newWord
    */
   handleReplaceWordMessage(oldWord, newWord) {
     if (!this.activeElement) return;

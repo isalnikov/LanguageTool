@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LanguageTool Offline — Тестовая страница</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+    }
+
+    header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    header p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .test-section {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .test-section h2 {
+      color: #333;
+      font-size: 20px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .test-section p {
+      color: #666;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="email"],
+    .form-group input[type="url"],
+    .form-group input[type="password"],
+    .form-group input[type="search"],
+    .form-group input[type="tel"],
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .form-group small {
+      display: block;
+      color: #999;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+
+    .test-words {
+      background: #f8f9fa;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .test-words h4 {
+      color: #667eea;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .test-words code {
+      background: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #ff4444;
+      margin-right: 8px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .test-words .correct {
+      color: #4caf50;
+    }
+
+    .contenteditable {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 100px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .contenteditable:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .inline-inputs {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .inline-inputs input {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .status-bar {
+      background: #2d3748;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .status-bar .status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff9800;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .status-indicator.ready {
+      background: #4caf50;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .instructions {
+      background: #e8f4fd;
+      border-left: 4px solid #667eea;
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 24px;
+    }
+
+    .instructions h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .instructions ol {
+      color: #555;
+      padding-left: 20px;
+    }
+
+    .instructions li {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      color: white;
+      margin-top: 40px;
+      opacity: 0.9;
+    }
+
+    footer a {
+      color: white;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔤 LanguageTool Offline</h1>
+      <p>Тестовая страница для проверки работы расширения</p>
+    </header>
+
+    <!-- Статус -->
+    <div class="status-bar">
+      <div class="status">
+        <div class="status-indicator" id="status-indicator"></div>
+        <span id="status-text">Загрузка словарей...</span>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="en-count">0</div>
+          <div class="stat-label">EN слова</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="ru-count">0</div>
+          <div class="stat-label">RU слова</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="total-count">0</div>
+          <div class="stat-label">Всего</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Инструкции -->
+    <div class="instructions">
+      <h3>📋 Как тестировать</h3>
+      <ol>
+        <li>Начните печатать в любом поле ниже</li>
+        <li>Ошибочные слова будут подчёркнуты <strong>красной двойной линией</strong></li>
+        <li>Кликните на ошибочное слово для показа подсказок</li>
+        <li>Используйте <strong>правый клик</strong> для контекстного меню</li>
+        <li>Слова с <code class="correct">зелёной</code> пометкой — правильные</li>
+      </ol>
+    </div>
+
+    <!-- Input: Text -->
+    <div class="test-section">
+      <h2>1. Текстовое поле (input type="text")</h2>
+      <p>Проверка работы в обычном текстовом поле</p>
+      <div class="test-words">
+        <h4>Тестовые слова (ошибочные → правильные):</h4>
+        <code>абсолутный</code> <code>абсолютный</code>
+        <code>абстрактныйи</code> <code>абстрактный</code>
+        <code>аборигенный</code> <code class="correct">✓</code>
+        <code>абракадабра</code> <code class="correct">✓</code>
+        <code>abracadabra</code> <code class="correct">✓</code>
+        <code>abondon</code> <code>abandon</code>
+      </div>
+      <div class="form-group">
+        <label for="text-input">Введите текст:</label>
+        <input type="text" id="text-input" placeholder="Например: абсолутный аборигенный абракадабра">
+        <small>Поле для ввода обычного текста</small>
+      </div>
+    </div>
+
+    <!-- Input: Email -->
+    <div class="test-section">
+      <h2>2. Email поле (input type="email")</h2>
+      <p>Проверка работы в поле email</p>
+      <div class="form-group">
+        <label for="email-input">Email:</label>
+        <input type="email" id="email-input" placeholder="example@mail.com">
+        <small>Поле для ввода email адреса</small>
+      </div>
+    </div>
+
+    <!-- Input: Password -->
+    <div class="test-section">
+      <h2>3. Поле пароля (input type="password")</h2>
+      <p>Проверка работы в поле пароля</p>
+      <div class="form-group">
+        <label for="password-input">Пароль:</label>
+        <input type="password" id="password-input" placeholder="Введите пароль">
+        <small>Поле для ввода пароля (символы скрыты)</small>
+      </div>
+    </div>
+
+    <!-- Input: Search -->
+    <div class="test-section">
+      <h2>4. Поле поиска (input type="search")</h2>
+      <p>Проверка работы в поле поиска</p>
+      <div class="form-group">
+        <label for="search-input">Поиск:</label>
+        <input type="search" id="search-input" placeholder="Поиск...">
+        <small>Поле для поискового запроса</small>
+      </div>
+    </div>
+
+    <!-- Input: URL -->
+    <div class="test-section">
+      <h2>5. Поле URL (input type="url")</h2>
+      <p>Проверка работы в поле URL</p>
+      <div class="form-group">
+        <label for="url-input">Веб-сайт:</label>
+        <input type="url" id="url-input" placeholder="https://example.com">
+        <small>Поле для ввода URL адреса</small>
+      </div>
+    </div>
+
+    <!-- Input: Tel -->
+    <div class="test-section">
+      <h2>6. Поле телефона (input type="tel")</h2>
+      <p>Проверка работы в поле телефона</p>
+      <div class="form-group">
+        <label for="tel-input">Телефон:</label>
+        <input type="tel" id="tel-input" placeholder="+7 (999) 000-00-00">
+        <small>Поле для ввода номера телефона</small>
+      </div>
+    </div>
+
+    <!-- Textarea -->
+    <div class="test-section">
+      <h2>7. Многострочное поле (textarea)</h2>
+      <p>Проверка работы в textarea с overlay подсветкой</p>
+      <div class="test-words">
+        <h4>Тестовые предложения:</h4>
+        <code>Абсолутный абстрактныйи аборигенный</code>
+        <code>Abandon abode abracadabra</code>
+        <code>абракадабра абсцесс абсурдный</code>
+      </div>
+      <div class="form-group">
+        <label for="textarea-input">Введите текст:</label>
+        <textarea id="textarea-input" placeholder="Начните печатать многострочный текст..."></textarea>
+        <small>Многострочное текстовое поле с подсветкой ошибок</small>
+      </div>
+    </div>
+
+    <!-- Content Editable -->
+    <div class="test-section">
+      <h2>8. Редактируемый контент (contenteditable)</h2>
+      <p>Проверка работы в элементах с contenteditable</p>
+      <div class="test-words">
+        <h4>Попробуйте написать с ошибками:</h4>
+        <code>абсолютный</code> <code class="correct">✓</code>
+        <code>абсалютный</code> <code>абсолютный</code>
+        <code>абстрактный</code> <code class="correct">✓</code>
+        <code>абстракный</code> <code>абстрактный</code>
+      </div>
+      <div class="form-group">
+        <label>Редактор:</label>
+        <div class="contenteditable" contenteditable="true" id="editable-div">
+          Начните печатать в этом редакторе...
+        </div>
+        <small>Элемент div с атрибутом contenteditable</small>
+      </div>
+    </div>
+
+    <!-- Multiple Inputs -->
+    <div class="test-section">
+      <h2>9. Несколько полей одновременно</h2>
+      <p>Проверка работы с несколькими активными полями</p>
+      <div class="inline-inputs">
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label for="inline-1">Поле 1:</label>
+          <input type="text" id="inline-1" placeholder="абсолутный">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label for="inline-2">Поле 2:</label>
+          <input type="text" id="inline-2" placeholder="абстрактныйи">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label for="inline-3">Поле 3:</label>
+          <input type="text" id="inline-3" placeholder="аборигенный">
+        </div>
+      </div>
+    </div>
+
+    <!-- English Test -->
+    <div class="test-section">
+      <h2>10. English Language Test</h2>
+      <p>Testing English spell checking</p>
+      <div class="test-words">
+        <h4>Test words (wrong → correct):</h4>
+        <code>abondon</code> <code>abandon</code>
+        <code>aberration</code> <code class="correct">✓</code>
+        <code>absolut</code> <code>absolute</code>
+        <code>abracadabra</code> <code class="correct">✓</code>
+        <code>abbreviate</code> <code class="correct">✓</code>
+      </div>
+      <div class="form-group">
+        <label for="en-input">Enter text in English:</label>
+        <input type="text" id="en-input" placeholder="Type: abondon aberration absolut">
+        <small>English language spell check</small>
+      </div>
+    </div>
+
+    <footer>
+      <p>LanguageTool Offline v1.0.1</p>
+      <p><a href="https://github.com/isalnikov/LanguageTool" target="_blank">GitHub Repository</a></p>
+    </footer>
+  </div>
+
+  <script>
+    // Проверка статуса словарей
+    async function updateStatus() {
+      try {
+        const status = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+        
+        const indicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const enCount = document.getElementById('en-count');
+        const ruCount = document.getElementById('ru-count');
+        const totalCount = document.getElementById('total-count');
+        
+        if (status.loaded) {
+          indicator.classList.add('ready');
+          statusText.textContent = 'Словари загружены';
+          enCount.textContent = (status.enCount || 0).toLocaleString();
+          ruCount.textContent = (status.ruCount || 0).toLocaleString();
+          totalCount.textContent = (status.total || 0).toLocaleString();
+        } else {
+          statusText.textContent = 'Загрузка словарей...';
+        }
+      } catch (error) {
+        console.error('Ошибка получения статуса:', error);
+        document.getElementById('status-text').textContent = 'Ошибка подключения';
+      }
+    }
+
+    // Обновление статуса при загрузке
+    updateStatus();
+    
+    // Обновление статуса каждые 5 секунд
+    setInterval(updateStatus, 5000);
+  </script>
+</body>
+</html>
