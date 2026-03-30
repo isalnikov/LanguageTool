@@ -612,7 +612,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     
     case 'GET_SUGGESTIONS':
-      SpellChecker.getSuggestions(message.word)
+      SpellChecker.getSuggestions(message.word, message.limit || 10)
         .then(result => {
           logger.debug('→ GET_SUGGESTIONS:', result.length, 'предложений');
           sendResponse(result);

@@ -15,6 +15,12 @@
   background-color: rgba(255, 0, 0, 0.05);
   cursor: pointer;
   border-bottom: 2px double #ff0000;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.spell-error:hover {
+  background-color: rgba(255, 0, 0, 0.15);
 }
 
 /* Альтернативный стиль для браузеров без поддержки wavy */

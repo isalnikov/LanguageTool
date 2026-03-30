@@ -267,7 +267,7 @@ class SpellChecker {
       const startTime = Date.now();
       
       chrome.runtime.sendMessage(
-        { type: 'GET_SUGGESTIONS', word },
+        { type: 'GET_SUGGESTIONS', word, limit: 15 },
         (response) => {
           const duration = Date.now() - startTime;
           
@@ -331,6 +331,19 @@ class SpellChecker {
     }
     
     overlay.innerHTML = html;
+    
+    // Добавляем обработчик клика на ошибочные слова
+    overlay.querySelectorAll('.spell-error').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const word = el.dataset.word;
+        const rect = el.getBoundingClientRect();
+        logger.log(`Клик на ошибочном слове: "${word}"`);
+        this.showTooltip(word, rect.left, rect.bottom + 5);
+      });
+    });
+    
+    logger.log(`Добавлены обработчики клика на ${misspelled.length} ошибок`);
   }
 
   escapeRegex(string) {
