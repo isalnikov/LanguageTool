@@ -172,34 +172,43 @@ const Trie = (function() {
     /**
      * Нечёткий поиск слов с опечатками
      * Ищет слова с расстоянием Левенштейна <= maxDistance
+     * Возвращает результаты отсортированные по расстоянию (лучшие первыми)
      */
     findFuzzy(word, limit = 10, maxDistance = 2) {
       if (!word || word.trim() === '') return [];
       
       const normalizedWord = word.toLowerCase().trim();
-      const results = new Set();
+      const results = [];
       
       // Поиск с обходом дерева и вычислением расстояния
-      this._fuzzySearch(this.root, '', normalizedWord, maxDistance, results, limit);
+      this._fuzzySearch(this.root, '', normalizedWord, maxDistance, results, limit * 3);
       
-      return Array.from(results).slice(0, limit);
+      // Сортируем по расстоянию Левенштейна (меньше = лучше)
+      results.sort((a, b) => {
+        const distA = this._levenshteinDistance(a.word, normalizedWord);
+        const distB = this._levenshteinDistance(b.word, normalizedWord);
+        return distA - distB;
+      });
+      
+      // Возвращаем только слова (без расстояния) и ограничиваем лимит
+      return results.slice(0, limit).map(r => r.word);
     }
 
-    _fuzzySearch(node, currentWord, targetWord, maxDistance, results, limit) {
-      if (results.size >= limit) return;
+    _fuzzySearch(node, currentWord, targetWord, maxDistance, results, maxResults) {
+      if (results.length >= maxResults) return;
       
       // Если это конец слова и расстояние небольшое - добавляем
       if (node.isEndOfWord) {
         const distance = this._levenshteinDistance(currentWord, targetWord);
         if (distance <= maxDistance) {
-          results.add(currentWord);
+          results.push({ word: currentWord, distance });
         }
       }
       
       // Продолжаем обход если текущее расстояние ещё позволяет
       if (currentWord.length - targetWord.length <= maxDistance) {
         for (const [char, childNode] of node.children) {
-          this._fuzzySearch(childNode, currentWord + char, targetWord, maxDistance, results, limit);
+          this._fuzzySearch(childNode, currentWord + char, targetWord, maxDistance, results, maxResults);
         }
       }
     }
@@ -245,14 +254,20 @@ const Trie = (function() {
       
       const normalizedWord = word.toLowerCase().trim();
       
+      logger.debug(`findSuggestions: "${normalizedWord}"`);
+      
       // Сначала пробуем поиск по префиксу
       const prefixResults = this.findByPrefix(normalizedWord, limit);
       if (prefixResults.length > 0) {
+        logger.debug(`  → найдено по префиксу: ${prefixResults.length}`);
         return prefixResults;
       }
       
       // Если не найдено - нечёткий поиск
-      return this.findFuzzy(normalizedWord, limit, 2);
+      logger.debug(`  → поиск по префиксу не дал результатов, используем fuzzy...`);
+      const fuzzyResults = this.findFuzzy(normalizedWord, limit, 2);
+      logger.debug(`  → найдено fuzzy: ${fuzzyResults.length}`, fuzzyResults);
+      return fuzzyResults;
     }
 
     size() { return this.wordCount; }
