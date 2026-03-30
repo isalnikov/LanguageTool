@@ -3,42 +3,386 @@
  * Управляет загрузкой словарей, обработкой запросов и контекстным меню
  */
 
-// Используем глобальный объект LanguageTool
-const { DictionaryDB, STORE_NAMES } = window.LanguageTool;
-const { DictionaryManager } = window.LanguageTool;
-const { Logger } = window.LanguageTool;
+'use strict';
+
+// ============================================
+// Logger (встроенный, чтобы не зависеть от window)
+// ============================================
+
+const Logger = (function() {
+  const LEVELS = { DEBUG: 0, LOG: 1, INFO: 2, WARN: 3, ERROR: 4 };
+  
+  class Logger {
+    constructor(context = 'app') {
+      this.context = context;
+      this.enabled = true;
+      this.logLevel = LEVELS.INFO;
+      this.maxStoredLogs = 1000;
+    }
+
+    formatMessage(level, args) {
+      return {
+        timestamp: new Date().toISOString(),
+        context: this.context,
+        level,
+        message: args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' '),
+        args: args
+      };
+    }
+
+    logToConsole(level, args) {
+      const prefix = `[${this.context}]`;
+      const consoleMethod = level.toLowerCase();
+      if (console[consoleMethod]) {
+        console[consoleMethod](prefix, ...args);
+      } else {
+        console.log(prefix, ...args);
+      }
+    }
+
+    async saveToStorage(logEntry) {
+      try {
+        const storage = await chrome.storage.local.get(['logs']);
+        const logs = storage.logs || [];
+        logs.push(logEntry);
+        if (logs.length > this.maxStoredLogs) logs.shift();
+        await chrome.storage.local.set({ logs });
+      } catch (error) {
+        console.error('[Logger] Ошибка сохранения лога:', error);
+      }
+    }
+
+    async logMessage(level, ...args) {
+      if (!this.enabled) return;
+      const levelNum = LEVELS[level];
+      if (levelNum < this.logLevel) return;
+      const logEntry = this.formatMessage(level, args);
+      this.logToConsole(level, args);
+      this.saveToStorage(logEntry);
+    }
+
+    debug(...args) { this.logMessage('DEBUG', ...args); }
+    log(...args) { this.logMessage('LOG', ...args); }
+    info(...args) { this.logMessage('INFO', ...args); }
+    warn(...args) { this.logMessage('WARN', ...args); }
+    error(...args) { this.logMessage('ERROR', ...args); }
+  }
+  
+  return Logger;
+})();
 
 const logger = new Logger('background');
 
-// Глобальный менеджер словарей
-const dictManager = new DictionaryManager();
+// ============================================
+// Trie (встроенный, чтобы не зависеть от window)
+// ============================================
 
-// Кэш для хранения загруженных слов
+const Trie = (function() {
+  class TrieNode {
+    constructor() {
+      this.children = new Map();
+      this.isEndOfWord = false;
+    }
+  }
+
+  class Trie {
+    constructor() {
+      this.root = new TrieNode();
+      this.wordCount = 0;
+    }
+
+    insert(word) {
+      if (!word || word.trim() === '') return;
+      const normalizedWord = word.toLowerCase().trim();
+      let node = this.root;
+      for (const char of normalizedWord) {
+        if (!node.children.has(char)) {
+          node.children.set(char, new TrieNode());
+        }
+        node = node.children.get(char);
+      }
+      if (!node.isEndOfWord) {
+        node.isEndOfWord = true;
+        this.wordCount++;
+      }
+    }
+
+    insertBatch(words) {
+      for (const word of words) this.insert(word);
+    }
+
+    has(word) {
+      if (!word || word.trim() === '') return false;
+      const normalizedWord = word.toLowerCase().trim();
+      let node = this.root;
+      for (const char of normalizedWord) {
+        if (!node.children.has(char)) return false;
+        node = node.children.get(char);
+      }
+      return node.isEndOfWord;
+    }
+
+    findByPrefix(prefix, limit = 10) {
+      if (!prefix || prefix.trim() === '') return [];
+      const normalizedPrefix = prefix.toLowerCase().trim();
+      let node = this.root;
+      for (const char of normalizedPrefix) {
+        if (!node.children.has(char)) return [];
+        node = node.children.get(char);
+      }
+      const results = [];
+      this._collectWords(node, normalizedPrefix, results, limit);
+      return results;
+    }
+
+    _collectWords(node, prefix, results, limit) {
+      if (results.length >= limit) return;
+      if (node.isEndOfWord) results.push(prefix);
+      for (const [char, childNode] of node.children) {
+        if (results.length >= limit) break;
+        this._collectWords(childNode, prefix + char, results, limit);
+      }
+    }
+
+    size() { return this.wordCount; }
+    clear() {
+      this.root = new TrieNode();
+      this.wordCount = 0;
+    }
+  }
+  
+  return Trie;
+})();
+
+// ============================================
+// DictionaryManager (встроенный)
+// ============================================
+
+const DictionaryManager = (function() {
+  class DictionaryManager {
+    constructor() {
+      this.dictionaries = new Map();
+      this.loadedLanguages = new Set();
+    }
+
+    loadDictionary(lang, words) {
+      console.log(`[DictionaryManager] Загрузка словаря ${lang}: ${words.length} слов`);
+      const trie = new Trie();
+      trie.insertBatch(words);
+      this.dictionaries.set(lang, trie);
+      this.loadedLanguages.add(lang);
+      console.log(`[DictionaryManager] Словарь ${lang} загружен. Размер: ${trie.size()} слов`);
+    }
+
+    checkWord(lang, word) {
+      const trie = this.dictionaries.get(lang);
+      if (!trie) {
+        console.warn(`[DictionaryManager] Словарь ${lang} не загружен`);
+        return false;
+      }
+      return trie.has(word);
+    }
+
+    getSuggestions(lang, prefix, limit = 10) {
+      const trie = this.dictionaries.get(lang);
+      if (!trie) return [];
+      return trie.findByPrefix(prefix, limit);
+    }
+
+    isDictionaryLoaded(lang) {
+      return this.loadedLanguages.has(lang);
+    }
+
+    getDictionarySize(lang) {
+      const trie = this.dictionaries.get(lang);
+      return trie ? trie.size() : 0;
+    }
+
+    detectLanguage(word) {
+      const cyrillicRegex = /[\u0400-\u04FF]/;
+      if (cyrillicRegex.test(word)) return 'ru';
+      const latinRegex = /[a-zA-Z]/;
+      if (latinRegex.test(word)) return 'en';
+      return null;
+    }
+
+    checkWordAuto(word) {
+      const lang = this.detectLanguage(word);
+      if (!lang) return { isValid: true, lang: null };
+      const isValid = this.checkWord(lang, word);
+      return { isValid, lang };
+    }
+
+    getSuggestionsAuto(prefix, limit = 10) {
+      const lang = this.detectLanguage(prefix);
+      if (!lang) return [];
+      return this.getSuggestions(lang, prefix, limit);
+    }
+  }
+  
+  return DictionaryManager;
+})();
+
+// ============================================
+// DictionaryDB (встроенный для background)
+// ============================================
+
+const DictionaryDB = (function() {
+  const DB_NAME = 'LanguageToolDictDB';
+  const DB_VERSION = 1;
+  const STORE_NAMES = {
+    EN: 'english_words',
+    RU: 'russian_words',
+    META: 'metadata'
+  };
+
+  class DictionaryDB {
+    constructor() {
+      this.db = null;
+      this.isOpen = false;
+    }
+
+    async open() {
+      if (this.isOpen && this.db) return this.db;
+
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => {
+          console.error('[DictionaryDB] Ошибка открытия базы данных:', request.error);
+          reject(request.error);
+        };
+
+        request.onsuccess = () => {
+          this.db = request.result;
+          this.isOpen = true;
+          console.log('[DictionaryDB] База данных успешно открыта');
+          resolve(this.db);
+        };
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          console.log('[DictionaryDB] Создание хранилищ данных...');
+
+          if (!db.objectStoreNames.contains(STORE_NAMES.EN)) {
+            const enStore = db.createObjectStore(STORE_NAMES.EN, { keyPath: 'id', autoIncrement: true });
+            enStore.createIndex('word', 'word', { unique: true });
+          }
+
+          if (!db.objectStoreNames.contains(STORE_NAMES.RU)) {
+            const ruStore = db.createObjectStore(STORE_NAMES.RU, { keyPath: 'id', autoIncrement: true });
+            ruStore.createIndex('word', 'word', { unique: true });
+          }
+
+          if (!db.objectStoreNames.contains(STORE_NAMES.META)) {
+            db.createObjectStore(STORE_NAMES.META, { keyPath: 'key' });
+          }
+        };
+      });
+    }
+
+    async bulkInsert(storeName, words, batchSize = 10000) {
+      if (!this.db) await this.open();
+
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+
+      await new Promise((resolve) => {
+        store.clear().onsuccess = resolve;
+      });
+
+      console.log(`[DictionaryDB] Вставка ${words.length} слов в ${storeName}...`);
+
+      for (let i = 0; i < words.length; i += batchSize) {
+        const batch = words.slice(i, i + batchSize);
+        const batchPromises = batch.map(word => {
+          return new Promise((resolve, reject) => {
+            const request = store.add({ word: word.toLowerCase() });
+            request.onsuccess = resolve;
+            request.onerror = reject;
+          });
+        });
+
+        await Promise.all(batchPromises);
+        console.log(`[DictionaryDB] Обработано ${Math.min(i + batchSize, words.length)} из ${words.length} слов`);
+      }
+
+      return new Promise((resolve) => {
+        transaction.oncomplete = () => {
+          console.log(`[DictionaryDB] Вставка завершена: ${words.length} слов`);
+          resolve();
+        };
+      });
+    }
+
+    async getCount(storeName) {
+      if (!this.db) await this.open();
+
+      return new Promise((resolve, reject) => {
+        const transaction = this.db.transaction([storeName], 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.count();
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = reject;
+      });
+    }
+
+    async loadAllWords(storeName) {
+      if (!this.db) await this.open();
+
+      return new Promise((resolve, reject) => {
+        const words = [];
+        const transaction = this.db.transaction([storeName], 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.openCursor();
+
+        request.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            words.push(cursor.value.word);
+            cursor.continue();
+          } else {
+            resolve(words);
+          }
+        };
+        request.onerror = reject;
+      });
+    }
+  }
+
+  return new DictionaryDB();
+})();
+
+// ============================================
+// Глобальные переменные
+// ============================================
+
+const dictManager = new DictionaryManager();
 const wordCache = new Map();
 
-/**
- * Инициализация расширения
- */
+// ============================================
+// Функции инициализации
+// ============================================
+
 async function init() {
   logger.log('Инициализация LanguageTool Offline...');
   
   try {
-    // Открываем IndexedDB
     await DictionaryDB.open();
     logger.log('IndexedDB открыта');
     
-    // Проверяем, загружены ли словари в IndexedDB
     const enCount = await DictionaryDB.getCount('english_words');
     const ruCount = await DictionaryDB.getCount('russian_words');
     
     logger.log(`Словари в IndexedDB: en=${enCount}, ru=${ruCount}`);
     
-    // Если словари пусты, загружаем их из файлов
     if (enCount === 0 || ruCount === 0) {
       logger.log('Словари пусты, начинаем загрузку...');
       await loadDictionariesFromFiles();
     } else {
-      // Загружаем словари в Trie для быстрой работы
       await loadDictionariesIntoTrie();
     }
     
@@ -48,12 +392,8 @@ async function init() {
   }
 }
 
-/**
- * Загрузка словарей из файлов vocab/
- */
 async function loadDictionariesFromFiles() {
   try {
-    // Загружаем английский словарь
     logger.log('Загрузка английского словаря...');
     const enResponse = await fetch(chrome.runtime.getURL('vocab/en/words.txt'));
     const enText = await enResponse.text();
@@ -62,7 +402,6 @@ async function loadDictionariesFromFiles() {
     await DictionaryDB.bulkInsert('english_words', enWords);
     logger.log(`Английский словарь загружен: ${enWords.length} слов`);
     
-    // Загружаем русский словарь
     logger.log('Загрузка русского словаря...');
     const ruResponse = await fetch(chrome.runtime.getURL('vocab/ru/words.txt'));
     const ruText = await ruResponse.text();
@@ -71,7 +410,6 @@ async function loadDictionariesFromFiles() {
     await DictionaryDB.bulkInsert('russian_words', ruWords);
     logger.log(`Русский словарь загружен: ${ruWords.length} слов`);
     
-    // После загрузки в DB, загружаем в Trie
     await loadDictionariesIntoTrie();
     
   } catch (error) {
@@ -79,24 +417,18 @@ async function loadDictionariesFromFiles() {
   }
 }
 
-/**
- * Загрузка словарей из IndexedDB в Trie (в память)
- */
 async function loadDictionariesIntoTrie() {
   try {
     logger.log('Загрузка словарей в память (Trie)...');
     
-    // Загружаем английский словарь
-    const enWords = await loadWordsFromDB('english_words');
+    const enWords = await DictionaryDB.loadAllWords('english_words');
     dictManager.loadDictionary('en', enWords);
     
-    // Загружаем русский словарь
-    const ruWords = await loadWordsFromDB('russian_words');
+    const ruWords = await DictionaryDB.loadAllWords('russian_words');
     dictManager.loadDictionary('ru', ruWords);
     
     logger.log(`Словари загружены в память: en=${enWords.length}, ru=${ruWords.length}`);
     
-    // Сохраняем статус в storage
     await chrome.storage.local.set({
       dictionariesLoaded: true,
       enWordCount: enWords.length,
@@ -109,33 +441,10 @@ async function loadDictionariesIntoTrie() {
   }
 }
 
-/**
- * Загрузка всех слов из IndexedDB
- */
-async function loadWordsFromDB(storeName) {
-  return new Promise((resolve, reject) => {
-    const words = [];
-    const transaction = DictionaryDB.db.transaction([storeName], 'readonly');
-    const store = transaction.objectStore(storeName);
-    const request = store.openCursor();
+// ============================================
+// Обработчики сообщений
+// ============================================
 
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        words.push(cursor.value.word);
-        cursor.continue();
-      } else {
-        resolve(words);
-      }
-    };
-    
-    request.onerror = reject;
-  });
-}
-
-/**
- * Обработка запросов от content script
- */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   logger.log('Получено сообщение:', message.type);
   
@@ -182,9 +491,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-/**
- * Обработка проверки слова
- */
 async function handleCheckWord(word) {
   if (!word || word.trim() === '') {
     return { isValid: true, lang: null };
@@ -196,9 +502,6 @@ async function handleCheckWord(word) {
   return result;
 }
 
-/**
- * Обработка получения подсказок
- */
 async function handleGetSuggestions(word) {
   if (!word || word.trim() === '') {
     return [];
@@ -210,9 +513,6 @@ async function handleGetSuggestions(word) {
   return suggestions;
 }
 
-/**
- * Обработка получения статуса
- */
 async function handleGetStatus() {
   const enCount = dictManager.getDictionarySize('en');
   const ruCount = dictManager.getDictionarySize('ru');
@@ -225,9 +525,6 @@ async function handleGetStatus() {
   };
 }
 
-/**
- * Обработка перезагрузки словарей
- */
 async function handleReloadDictionaries() {
   try {
     dictManager.dictionaries.clear();
@@ -243,9 +540,10 @@ async function handleReloadDictionaries() {
   }
 }
 
-/**
- * Создание контекстного меню
- */
+// ============================================
+// Контекстное меню
+// ============================================
+
 function createContextMenu() {
   chrome.contextMenus.create({
     id: 'languagetool-replace',
@@ -268,9 +566,6 @@ function createContextMenu() {
   logger.log('Контекстное меню создано');
 }
 
-/**
- * Обработка клика по контекстному меню
- */
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   logger.log('Клик по контекстному меню:', info.menuItemId);
   
@@ -282,9 +577,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-/**
- * Добавление слова в список исключений
- */
 async function addWordToIgnore(word) {
   const storage = await chrome.storage.local.get(['ignoredWords']);
   const ignoredWords = storage.ignoredWords || [];
@@ -296,9 +588,6 @@ async function addWordToIgnore(word) {
   }
 }
 
-/**
- * Замена слова в активной вкладке
- */
 function replaceWordInTab(tabId, oldWord, newWord) {
   chrome.tabs.sendMessage(tabId, {
     type: 'REPLACE_WORD',
@@ -309,11 +598,13 @@ function replaceWordInTab(tabId, oldWord, newWord) {
   logger.log(`Замена "${oldWord}" -> "${newWord}" во вкладке ${tabId}`);
 }
 
-// Инициализация при запуске
+// ============================================
+// Запуск
+// ============================================
+
 createContextMenu();
 init();
 
-// Перезагрузка при активации расширения
 chrome.runtime.onInstalled.addListener(() => {
   logger.log('Расширение установлено/обновлено');
   init();
