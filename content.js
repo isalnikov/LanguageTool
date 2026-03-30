@@ -3,10 +3,41 @@
  * Работает со всеми текстовыми полями на странице
  */
 
-// Используем глобальный объект LanguageTool
-const { Logger } = window.LanguageTool;
+// ============================================
+// Logger для content script
+// ============================================
 
-const logger = new Logger('content');
+const ContentLogger = (function() {
+  const LEVELS = { DEBUG: 0, LOG: 1, INFO: 2, WARN: 3, ERROR: 4 };
+  
+  class Logger {
+    constructor(context = 'content') {
+      this.context = context;
+      this.enabled = true;
+      this.logLevel = LEVELS.DEBUG;
+    }
+
+    logToConsole(level, ...args) {
+      const prefix = `[${this.context}]`;
+      const consoleMethod = level.toLowerCase();
+      if (console[consoleMethod]) {
+        console[consoleMethod](prefix, ...args);
+      } else {
+        console.log(prefix, ...args);
+      }
+    }
+
+    debug(...args) { this.logToConsole('DEBUG', ...args); }
+    log(...args) { this.logToConsole('LOG', ...args); }
+    info(...args) { this.logToConsole('INFO', ...args); }
+    warn(...args) { this.logToConsole('WARN', ...args); }
+    error(...args) { this.logToConsole('ERROR', ...args); }
+  }
+  
+  return Logger;
+})();
+
+const logger = new ContentLogger('content');
 
 // Класс для управления проверкой орфографии
 class SpellChecker {
@@ -577,10 +608,17 @@ class SpellChecker {
 // Глобальный экземпляр
 const spellChecker = new SpellChecker();
 
+logger.log('=== CONTENT SCRIPT ЗАГРУЖЕН ===');
+logger.log('URL страницы:', window.location.href);
+
 // Инициализация после загрузки DOM
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => spellChecker.init());
+  document.addEventListener('DOMContentLoaded', () => {
+    logger.log('DOM загружен, инициализация...');
+    spellChecker.init();
+  });
 } else {
+  logger.log('DOM уже загружен, инициализация...');
   spellChecker.init();
 }
 
