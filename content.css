@@ -284,6 +284,119 @@
 }
 
 /* ============================================
+   Debug Panel
+   ============================================ */
+
+#spell-debug-panel .debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+  cursor: pointer;
+}
+
+#spell-debug-panel .debug-header span {
+  font-weight: 600;
+  color: #e94560;
+}
+
+#spell-debug-panel .debug-toggle {
+  background: none;
+  border: none;
+  color: #eee;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+}
+
+#spell-debug-panel .debug-content {
+  padding: 10px;
+  overflow-y: auto;
+  max-height: 350px;
+}
+
+#spell-debug-panel .debug-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #0f3460;
+}
+
+#spell-debug-panel .debug-stat:last-child {
+  border-bottom: none;
+}
+
+#spell-debug-panel .debug-stat .label {
+  color: #888;
+}
+
+#spell-debug-panel .debug-stat .value {
+  color: #4ecca3;
+  font-weight: 600;
+}
+
+#spell-debug-panel .debug-stat .value.error {
+  color: #e94560;
+}
+
+#spell-debug-panel .debug-log {
+  margin-top: 10px;
+  padding: 8px;
+  background: #0f3460;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+#spell-debug-panel .debug-log-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid #16213e;
+}
+
+#spell-debug-panel .debug-log-entry:last-child {
+  border-bottom: none;
+}
+
+#spell-debug-panel .debug-log-entry.info {
+  color: #4ecca3;
+}
+
+#spell-debug-panel .debug-log-entry.warn {
+  color: #ffc107;
+}
+
+#spell-debug-panel .debug-log-entry.error {
+  color: #e94560;
+}
+
+/* Скроллбар для debug панели */
+#spell-debug-panel .debug-content::-webkit-scrollbar,
+#spell-debug-panel .debug-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+#spell-debug-panel .debug-content::-webkit-scrollbar-track,
+#spell-debug-panel .debug-log::-webkit-scrollbar-track {
+  background: #16213e;
+}
+
+#spell-debug-panel .debug-content::-webkit-scrollbar-thumb,
+#spell-debug-panel .debug-log::-webkit-scrollbar-thumb {
+  background: #0f3460;
+  border-radius: 3px;
+}
+
+#spell-debug-panel .debug-content::-webkit-scrollbar-thumb:hover,
+#spell-debug-panel .debug-log::-webkit-scrollbar-thumb:hover {
+  background: #1a1a2e;
+}
+
+/* ============================================
    Адаптивность для мобильных устройств
    ============================================ */
 

@@ -197,17 +197,19 @@ const DictionaryLoader = (function() {
    * Загрузка словаря для языка
    */
   async function loadDictionary(lang) {
-    logger.log(`=== ЗАГРУЗКА СЛОВАРЯ: ${lang} ===`);
+    const loadStart = Date.now();
+    logger.log(`\n=== ЗАГРУЗКА СЛОВАРЯ: ${lang} ===`);
+    logger.log(`Время начала: ${new Date().toISOString()}`);
     
     // Проверяем кэш
     if (dictionaryCache.has(lang)) {
-      logger.log(`✓ Словарь ${lang} уже в кэше`);
+      logger.log(`✓ Словарь ${lang} уже в кэше (${dictionaryCache.get(lang).size()} слов)`);
       return dictionaryCache.get(lang);
     }
     
     // Проверяем, не загружается ли уже
     if (loadStatus[lang]?.loading) {
-      logger.log(`Словарь ${lang} уже загружается, ждем...`);
+      logger.log(`⏳ Словарь ${lang} уже загружается, ждем...`);
       return waitForLoad(lang);
     }
     
@@ -217,32 +219,55 @@ const DictionaryLoader = (function() {
     try {
       // Загружаем из файла
       const url = chrome.runtime.getURL(`vocab/${lang}/words.txt`);
-      logger.log(`URL словаря ${lang}: ${url}`);
+      logger.log(`📂 URL словаря: ${url}`);
       
+      const fetchStart = Date.now();
       const response = await fetch(url);
-      logger.log(`Статус ответа для ${lang}: ${response.status}`);
+      const fetchTime = Date.now() - fetchStart;
+      
+      logger.log(`📡 Статус ответа: ${response.status} ${response.statusText}`);
+      logger.log(`⏱️ Время загрузки: ${fetchTime}ms`);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
+      const parseStart = Date.now();
       const text = await response.text();
-      logger.log(`Размер текста ${lang}: ${text.length} символов`);
+      const parseTime = Date.now() - parseStart;
+      
+      logger.log(`📄 Размер текста: ${(text.length / 1024 / 1024).toFixed(2)} MB (${text.length.toLocaleString()} символов)`);
+      logger.log(`⏱️ Время парсинга: ${parseTime}ms`);
       
       // Разбиваем на слова и удаляем дубликаты
+      const splitStart = Date.now();
       const words = text.split('\n')
         .map(w => w.toLowerCase().trim())
         .filter(w => w.length > 0);
+      const splitTime = Date.now() - splitStart;
+      
+      logger.log(`📊 Всего слов: ${words.length.toLocaleString()}`);
+      logger.log(`⏱️ Время разбивки: ${splitTime}ms`);
       
       // Удаляем дубликаты через Set
+      const uniqueStart = Date.now();
       const uniqueWords = [...new Set(words)];
-      logger.log(`Уникальных слов ${lang}: ${uniqueWords.length} (было ${words.length})`);
+      const uniqueTime = Date.now() - uniqueStart;
+      
+      const duplicates = words.length - uniqueWords.length;
+      logger.log(`✨ Уникальных слов: ${uniqueWords.length.toLocaleString()}`);
+      logger.log(`🗑️ Удалено дубликатов: ${duplicates.toLocaleString()} (${(duplicates / words.length * 100).toFixed(1)}%)`);
+      logger.log(`⏱️ Время удаления дубликатов: ${uniqueTime}ms`);
       
       // Создаём Trie
+      logger.log('🌳 Создание Trie дерева...');
+      const trieStart = Date.now();
       const trie = new Trie();
       const inserted = trie.insertBatch(uniqueWords);
+      const trieTime = Date.now() - trieStart;
       
-      logger.log(`Вставлено в Trie: ${inserted} слов`);
+      logger.log(`✓ Вставлено в Trie: ${inserted.toLocaleString()} слов`);
+      logger.log(`⏱️ Время создания Trie: ${trieTime}ms (${(inserted / trieTime * 1000).toFixed(0)} слов/сек)`);
       
       // Кэшируем
       dictionaryCache.set(lang, trie);
@@ -250,13 +275,21 @@ const DictionaryLoader = (function() {
       loadStatus[lang].wordCount = inserted;
       loadStatus[lang].loading = false;
       
-      logger.log(`✓ Словарь ${lang} загружен: ${inserted} слов`);
+      const totalTime = Date.now() - loadStart;
+      
+      logger.log(`\n✅ СЛОВАРЬ ${lang.toUpperCase()} ЗАГРУЖЕН`);
+      logger.log(`📈 Статистика:`);
+      logger.log(`   • Слов в словаре: ${inserted.toLocaleString()}`);
+      logger.log(`   • Размер в памяти: ~${(inserted * 50 / 1024 / 1024).toFixed(2)} MB (оценка)`);
+      logger.log(`   • Общее время: ${totalTime}ms`);
+      logger.log(`   • Средняя скорость: ${(inserted / totalTime * 1000).toFixed(0)} слов/сек\n`);
       
       return trie;
       
     } catch (error) {
-      logger.error(`Ошибка загрузки словаря ${lang}:`, error);
-      logger.error('Stack:', error.stack);
+      logger.error(`\n❌ ОШИБКА ЗАГРУЗКИ СЛОВАРЯ ${lang}`);
+      logger.error(`Ошибка:`, error.message);
+      logger.error(`Stack:`, error.stack);
       loadStatus[lang].error = error.message;
       loadStatus[lang].loading = false;
       throw error;
