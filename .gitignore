@@ -25,10 +25,6 @@ temp/
 dist/
 build/
 
-# Словари (большие файлы)
-vocab/en/words.txt
-vocab/ru/words.txt
-
 # Словари (оставляем .gitkeep для структуры)
 !vocab/.gitkeep
 !vocab/en/.gitkeep
