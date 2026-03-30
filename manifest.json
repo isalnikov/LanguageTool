@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "LanguageTool Offline Spell Checker",
+  "version": "1.0.0",
+  "description": "Офлайн проверка орфографии и пунктуации с использованием локальных словарей",
+  "default_locale": "ru",
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "LanguageTool Offline"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["vocab/en/words.txt", "vocab/ru/words.txt"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

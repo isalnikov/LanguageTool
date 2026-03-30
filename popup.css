@@ -1,0 +1,516 @@
+/**
+ * @fileoverview Стили для popup страницы расширения
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  background: #f8f9fa;
+  min-width: 380px;
+  max-width: 380px;
+}
+
+.container {
+  padding: 20px;
+}
+
+/* ============================================
+   Заголовок
+   ============================================ */
+
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.header .subtitle {
+  font-size: 13px;
+  color: #666;
+}
+
+/* ============================================
+   Карточка статуса
+   ============================================ */
+
+.status-section {
+  margin-bottom: 16px;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ccc;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-indicator.ready {
+  background: #4caf50;
+}
+
+.status-indicator.loading {
+  background: #ff9800;
+}
+
+.status-indicator.error {
+  background: #f44336;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-text {
+  font-weight: 600;
+  color: #333;
+}
+
+.status-detail {
+  font-size: 12px;
+  color: #666;
+}
+
+/* ============================================
+   Статистика
+   ============================================ */
+
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.stat-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================
+   Кнопки действий
+   ============================================ */
+
+.actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #333;
+  border: 1px solid #e0e0e0;
+}
+
+.btn-secondary:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.btn-text {
+  background: none;
+  color: #667eea;
+  padding: 8px 16px;
+}
+
+.btn-text:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   Список исключений
+   ============================================ */
+
+.ignore-section {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.ignore-list {
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.ignore-empty {
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+  padding: 12px;
+}
+
+.ignore-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin: 4px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #333;
+}
+
+.ignore-word button {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.ignore-word button:hover {
+  background: #ff4444;
+  color: #ffffff;
+}
+
+/* ============================================
+   Информация
+   ============================================ */
+
+.info-section {
+  margin-bottom: 16px;
+}
+
+.info-card {
+  padding: 16px;
+  background: #e8f4fd;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.info-card h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.info-card ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.info-card li {
+  font-size: 13px;
+  color: #555;
+  padding: 4px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.info-card li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #4caf50;
+  font-weight: 600;
+}
+
+/* ============================================
+   Футер
+   ============================================ */
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.version {
+  font-size: 12px;
+  color: #999;
+}
+
+.github-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #333;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.github-link:hover {
+  background: #f5f5f5;
+}
+
+.github-link svg {
+  color: #333;
+}
+
+/* ============================================
+   Уведомления (toast)
+   ============================================ */
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #333;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 10000;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  background: #4caf50;
+}
+
+.toast.error {
+  background: #f44336;
+}
+
+/* ============================================
+   Адаптивность
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+  
+  .header h1 {
+    color: #e0e0e0;
+  }
+  
+  .header .subtitle {
+    color: #aaa;
+  }
+  
+  .status-card,
+  .stat-card,
+  .ignore-section {
+    background: #2d2d2d;
+  }
+  
+  .status-text {
+    color: #e0e0e0;
+  }
+  
+  .status-detail {
+    color: #aaa;
+  }
+  
+  .btn-secondary {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    border-color: #404040;
+  }
+  
+  .btn-secondary:hover {
+    background: #3d3d3d;
+  }
+  
+  .section-title {
+    color: #e0e0e0;
+  }
+  
+  .ignore-word {
+    background: #3d3d3d;
+    color: #e0e0e0;
+  }
+  
+  .info-card {
+    background: #2d3748;
+    border-left-color: #667eea;
+  }
+  
+  .info-card h4 {
+    color: #e0e0e0;
+  }
+  
+  .info-card li {
+    color: #aaa;
+  }
+  
+  .footer {
+    border-top-color: #404040;
+  }
+  
+  .github-link {
+    color: #e0e0e0;
+  }
+  
+  .github-link:hover {
+    background: #3d3d3d;
+  }
+  
+  .github-link svg {
+    color: #e0e0e0;
+  }
+}
+
+/* ============================================
+   Скроллбар
+   ============================================ */
+
+.ignore-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ignore-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.ignore-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.ignore-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ignore-list::-webkit-scrollbar-track {
+    background: #2d2d2d;
+  }
+  
+  .ignore-list::-webkit-scrollbar-thumb {
+    background: #555;
+  }
+  
+  .ignore-list::-webkit-scrollbar-thumb:hover {
+    background: #666;
+  }
+}

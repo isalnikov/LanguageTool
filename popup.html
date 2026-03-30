@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LanguageTool Offline</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Заголовок -->
+    <header class="header">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
+          <path d="M8 16L12 20L24 8" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs>
+            <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+              <stop stop-color="#667eea"/>
+              <stop offset="1" stop-color="#764ba2"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <h1>LanguageTool Offline</h1>
+      </div>
+      <p class="subtitle">Офлайн проверка орфографии</p>
+    </header>
+
+    <!-- Статус словарей -->
+    <section class="status-section">
+      <div class="status-card" id="status-card">
+        <div class="status-indicator" id="status-indicator"></div>
+        <div class="status-info">
+          <span class="status-text" id="status-text">Загрузка...</span>
+          <span class="status-detail" id="status-detail"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Статистика -->
+    <section class="stats-section">
+      <div class="stat-card">
+        <div class="stat-icon">🇬🇧</div>
+        <div class="stat-value" id="en-count">0</div>
+        <div class="stat-label">Английских слов</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🇷🇺</div>
+        <div class="stat-value" id="ru-count">0</div>
+        <div class="stat-label">Русских слов</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value" id="total-count">0</div>
+        <div class="stat-label">Всего слов</div>
+      </div>
+    </section>
+
+    <!-- Действия -->
+    <section class="actions-section">
+      <button class="btn btn-primary" id="reload-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Перезагрузить словари
+      </button>
+      
+      <button class="btn btn-secondary" id="export-logs-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Экспорт логов
+      </button>
+      
+      <button class="btn btn-secondary" id="clear-logs-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+        </svg>
+        Очистить логи
+      </button>
+    </section>
+
+    <!-- Исключения -->
+    <section class="ignore-section">
+      <h3 class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Игнорируемые слова
+      </h3>
+      <div class="ignore-list" id="ignore-list">
+        <p class="ignore-empty">Нет игнорируемых слов</p>
+      </div>
+      <button class="btn btn-text" id="clear-ignore-btn">
+        Очистить список исключений
+      </button>
+    </section>
+
+    <!-- Информация -->
+    <section class="info-section">
+      <div class="info-card">
+        <h4>Как использовать</h4>
+        <ul>
+          <li>Начните печатать в любом текстовом поле</li>
+          <li>Ошибочные слова будут подчёркнуты красной линией</li>
+          <li>Кликните на ошибку для замены</li>
+          <li>Используйте контекстное меню для дополнительных опций</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Футер -->
+    <footer class="footer">
+      <span class="version">Версия 1.0.0</span>
+      <a href="https://github.com/isalnikov/LanguageTool" target="_blank" class="github-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+        </svg>
+        GitHub
+      </a>
+    </footer>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

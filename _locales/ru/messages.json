@@ -1,0 +1,86 @@
+{
+  "extensionName": {
+    "message": "LanguageTool Offline",
+    "description": "Название расширения"
+  },
+  "extensionDescription": {
+    "message": "Офлайн проверка орфографии и пунктуации с использованием локальных словарей",
+    "description": "Описание расширения"
+  },
+  "popupTitle": {
+    "message": "LanguageTool Offline - Проверка орфографии",
+    "description": "Заголовок popup"
+  },
+  "statusLoading": {
+    "message": "Загрузка словарей...",
+    "description": "Статус загрузки"
+  },
+  "statusReady": {
+    "message": "Словари загружены",
+    "description": "Статус готовности"
+  },
+  "statusError": {
+    "message": "Ошибка загрузки",
+    "description": "Статус ошибки"
+  },
+  "englishWords": {
+    "message": "Английских слов",
+    "description": "Метка английских слов"
+  },
+  "russianWords": {
+    "message": "Русских слов",
+    "description": "Метка русских слов"
+  },
+  "totalWords": {
+    "message": "Всего слов",
+    "description": "Метка общего количества"
+  },
+  "reloadDictionaries": {
+    "message": "Перезагрузить словари",
+    "description": "Кнопка перезагрузки"
+  },
+  "exportLogs": {
+    "message": "Экспорт логов",
+    "description": "Кнопка экспорта"
+  },
+  "clearLogs": {
+    "message": "Очистить логи",
+    "description": "Кнопка очистки"
+  },
+  "ignoredWords": {
+    "message": "Игнорируемые слова",
+    "description": "Заголовок списка исключений"
+  },
+  "noIgnoredWords": {
+    "message": "Нет игнорируемых слов",
+    "description": "Пустой список исключений"
+  },
+  "clearIgnoreList": {
+    "message": "Очистить список исключений",
+    "description": "Кнопка очистки исключений"
+  },
+  "howToUse": {
+    "message": "Как использовать",
+    "description": "Заголовок инструкции"
+  },
+  "howToUseStep1": {
+    "message": "Начните печатать в любом текстовом поле",
+    "description": "Шаг 1"
+  },
+  "howToUseStep2": {
+    "message": "Ошибочные слова будут подчёркнуты красной линией",
+    "description": "Шаг 2"
+  },
+  "howToUseStep3": {
+    "message": "Кликните на ошибку для замены",
+    "description": "Шаг 3"
+  },
+  "howToUseStep4": {
+    "message": "Используйте контекстное меню для дополнительных опций",
+    "description": "Шаг 4"
+  },
+  "version": {
+    "message": "Версия",
+    "description": "Метка версии"
+  }
+}
