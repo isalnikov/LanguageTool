@@ -1,10 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
-    <linearGradient id="g128" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#667eea"/>
-      <stop offset="100%" stop-color="#764ba2"/>
+      <stop offset="50%" stop-color="#764ba2"/>
+      <stop offset="100%" stop-color="#f093fb"/>
     </linearGradient>
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="128" height="128" rx="3" fill="url(#g128)"/>
-  <polyline points="1280.25,1280.5 1280.4,1280.65 1280.75,1280.25" fill="none" stroke="white" stroke-width="1280.12" stroke-linecap="round" stroke-linejoin="round" transform="scale(1280.01)"/>
+  
+  <!-- Фон -->
+  <rect width="128" height="128" rx="24" fill="url(#bgGrad)"/>
+  
+  <!-- Иконка книги/документа -->
+  <g filter="url(#shadow)" transform="translate(24, 28)">
+    <!-- Страницы -->
+    <rect x="8" y="8" width="56" height="64" rx="4" fill="#ffffff" opacity="0.9"/>
+    <rect x="16" y="16" width="40" height="4" rx="2" fill="#667eea"/>
+    <rect x="16" y="24" width="36" height="3" rx="1.5" fill="#a0aec0"/>
+    <rect x="16" y="30" width="38" height="3" rx="1.5" fill="#a0aec0"/>
+    <rect x="16" y="36" width="34" height="3" rx="1.5" fill="#a0aec0"/>
+    <rect x="16" y="42" width="32" height="3" rx="1.5" fill="#a0aec0"/>
+    
+    <!-- Галочка проверки -->
+    <circle cx="56" cy="56" r="20" fill="url(#bgGrad)"/>
+    <path d="M48 56l6 6 10-10" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <!-- Буквы "A" и "Я" по углам -->
+  <text x="20" y="108" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" opacity="0.8">A</text>
+  <text x="108" y="108" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" opacity="0.8" text-anchor="end">Я</text>
 </svg>

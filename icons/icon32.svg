@@ -1,10 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
   <defs>
-    <linearGradient id="g32" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bgGrad32" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#667eea"/>
-      <stop offset="100%" stop-color="#764ba2"/>
+      <stop offset="50%" stop-color="#764ba2"/>
+      <stop offset="100%" stop-color="#f093fb"/>
     </linearGradient>
   </defs>
-  <rect width="32" height="32" rx="3" fill="url(#g32)"/>
-  <polyline points="320.25,320.5 320.4,320.65 320.75,320.25" fill="none" stroke="white" stroke-width="320.12" stroke-linecap="round" stroke-linejoin="round" transform="scale(320.01)"/>
+  
+  <rect width="32" height="32" rx="7" fill="url(#bgGrad32)"/>
+  
+  <rect x="5" y="6" width="16" height="18" rx="1.5" fill="#ffffff" opacity="0.95"/>
+  <rect x="7" y="8" width="12" height="1.5" rx="0.75" fill="#667eea"/>
+  <rect x="7" y="11" width="11" height="1" rx="0.5" fill="#a0aec0"/>
+  <rect x="7" y="13" width="11.5" height="1" rx="0.5" fill="#a0aec0"/>
+  <rect x="7" y="15" width="10" height="1" rx="0.5" fill="#a0aec0"/>
+  <rect x="7" y="17" width="9" height="1" rx="0.5" fill="#a0aec0"/>
+  
+  <circle cx="21" cy="21" r="6" fill="url(#bgGrad32)"/>
+  <path d="M18 21l2 2 4-4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>

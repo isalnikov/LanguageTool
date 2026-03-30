@@ -1,10 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
   <defs>
-    <linearGradient id="g48" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bgGrad48" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#667eea"/>
-      <stop offset="100%" stop-color="#764ba2"/>
+      <stop offset="50%" stop-color="#764ba2"/>
+      <stop offset="100%" stop-color="#f093fb"/>
     </linearGradient>
+    <filter id="shadow48" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+      <feOffset dx="0" dy="1" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="48" height="48" rx="3" fill="url(#g48)"/>
-  <polyline points="480.25,480.5 480.4,480.65 480.75,480.25" fill="none" stroke="white" stroke-width="480.12" stroke-linecap="round" stroke-linejoin="round" transform="scale(480.01)"/>
+  
+  <rect width="48" height="48" rx="10" fill="url(#bgGrad48)"/>
+  
+  <g filter="url(#shadow48)" transform="translate(8, 8)">
+    <rect x="2" y="2" width="24" height="28" rx="2" fill="#ffffff" opacity="0.95"/>
+    <rect x="5" y="5" width="18" height="2" rx="1" fill="#667eea"/>
+    <rect x="5" y="9" width="16" height="1.5" rx="0.75" fill="#a0aec0"/>
+    <rect x="5" y="12" width="17" height="1.5" rx="0.75" fill="#a0aec0"/>
+    <rect x="5" y="15" width="15" height="1.5" rx="0.75" fill="#a0aec0"/>
+    <rect x="5" y="18" width="14" height="1.5" rx="0.75" fill="#a0aec0"/>
+    
+    <circle cx="24" cy="24" r="9" fill="url(#bgGrad48)"/>
+    <path d="M20 24l3 3 5-5" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <text x="8" y="44" font-family="Arial" font-size="9" font-weight="bold" fill="#ffffff" opacity="0.7">A</text>
+  <text x="40" y="44" font-family="Arial" font-size="9" font-weight="bold" fill="#ffffff" opacity="0.7" text-anchor="end">Я</text>
 </svg>
