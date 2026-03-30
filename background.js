@@ -90,7 +90,7 @@ const Logger = (function() {
 const logger = new Logger('background');
 
 // ============================================
-// Trie
+// Trie с нечётким поиском
 // ============================================
 
 const Trie = (function() {
@@ -144,6 +144,9 @@ const Trie = (function() {
       return node.isEndOfWord;
     }
 
+    /**
+     * Поиск по префиксу (базовый метод)
+     */
     findByPrefix(prefix, limit = 10) {
       if (!prefix || prefix.trim() === '') return [];
       const normalizedPrefix = prefix.toLowerCase().trim();
@@ -164,6 +167,92 @@ const Trie = (function() {
         if (results.length >= limit) break;
         this._collectWords(childNode, prefix + char, results, limit);
       }
+    }
+
+    /**
+     * Нечёткий поиск слов с опечатками
+     * Ищет слова с расстоянием Левенштейна <= maxDistance
+     */
+    findFuzzy(word, limit = 10, maxDistance = 2) {
+      if (!word || word.trim() === '') return [];
+      
+      const normalizedWord = word.toLowerCase().trim();
+      const results = new Set();
+      
+      // Поиск с обходом дерева и вычислением расстояния
+      this._fuzzySearch(this.root, '', normalizedWord, maxDistance, results, limit);
+      
+      return Array.from(results).slice(0, limit);
+    }
+
+    _fuzzySearch(node, currentWord, targetWord, maxDistance, results, limit) {
+      if (results.size >= limit) return;
+      
+      // Если это конец слова и расстояние небольшое - добавляем
+      if (node.isEndOfWord) {
+        const distance = this._levenshteinDistance(currentWord, targetWord);
+        if (distance <= maxDistance) {
+          results.add(currentWord);
+        }
+      }
+      
+      // Продолжаем обход если текущее расстояние ещё позволяет
+      if (currentWord.length - targetWord.length <= maxDistance) {
+        for (const [char, childNode] of node.children) {
+          this._fuzzySearch(childNode, currentWord + char, targetWord, maxDistance, results, limit);
+        }
+      }
+    }
+
+    /**
+     * Расстояние Левенштейна
+     */
+    _levenshteinDistance(s1, s2) {
+      const m = s1.length;
+      const n = s2.length;
+      
+      // Оптимизация для очень разных по длине слов
+      if (Math.abs(m - n) > 2) return Math.max(m, n);
+      
+      const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+      
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,      // удаление
+            dp[i][j - 1] + 1,      // вставка
+            dp[i - 1][j - 1] + cost // замена
+          );
+          // Транспозиция (для соседних переставленных букв)
+          if (i > 1 && j > 1 && s1[i - 1] === s2[j - 2] && s1[i - 2] === s2[j - 1]) {
+            dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + cost);
+          }
+        }
+      }
+      
+      return dp[m][n];
+    }
+
+    /**
+     * Умный поиск: сначала по префиксу, потом нечёткий
+     */
+    findSuggestions(word, limit = 10) {
+      if (!word || word.trim() === '') return [];
+      
+      const normalizedWord = word.toLowerCase().trim();
+      
+      // Сначала пробуем поиск по префиксу
+      const prefixResults = this.findByPrefix(normalizedWord, limit);
+      if (prefixResults.length > 0) {
+        return prefixResults;
+      }
+      
+      // Если не найдено - нечёткий поиск
+      return this.findFuzzy(normalizedWord, limit, 2);
     }
 
     size() { return this.wordCount; }
@@ -446,7 +535,7 @@ const SpellChecker = (function() {
   }
   
   /**
-   * Получение подсказок
+   * Получение подсказок с нечётким поиском
    */
   async function getSuggestions(word, limit = 10) {
     if (!word || word.trim() === '') {
@@ -471,8 +560,12 @@ const SpellChecker = (function() {
       return [];
     }
     
-    const suggestions = trie.findByPrefix(prefix.toLowerCase(), limit);
-    logger.debug(`Подсказки для "${prefix}" (${lang}): ${suggestions.length}`);
+    // Умный поиск: префикс + нечёткий
+    const startTime = Date.now();
+    const suggestions = trie.findSuggestions(prefix.toLowerCase(), limit);
+    const duration = Date.now() - startTime;
+    
+    logger.log(`findSuggestions("${prefix}", ${lang}): ${duration}ms, найдено: ${suggestions.length}`);
     
     return suggestions;
   }
