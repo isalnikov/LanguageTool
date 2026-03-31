@@ -304,102 +304,144 @@ const DictionaryLoader = (function() {
   const tries = new Map();
 
   /**
-   * Загрузка словаря для языка
+   * Загрузка словаря для языка с подробным логированием
    */
   async function loadDictionary(lang) {
     const loadStart = Date.now();
-    logger.log(`\n=== ЗАГРУЗКА СЛОВАРЯ: ${lang} ===`);
-    logger.log(`Время начала: ${new Date().toISOString()}`);
-    
+    logger.log(`\n${'='.repeat(60)}`);
+    logger.log(`📚 ЗАГРУЗКА СЛОВАРЯ: ${lang.toUpperCase()}`);
+    logger.log(`⏰ Время начала: ${new Date().toISOString()}`);
+    logger.log(`${'='.repeat(60)}`);
+
     // Проверяем кэш
     if (dictionaryCache.has(lang)) {
-      logger.log(`✓ Словарь ${lang} уже в кэше (${dictionaryCache.get(lang).size()} слов)`);
+      const cachedTime = Date.now() - loadStart;
+      logger.log(`✅ КЭШ: Словарь ${lang} уже загружен (${dictionaryCache.get(lang).size()} слов)`);
+      logger.log(`⏱️ Время проверки кэша: ${cachedTime}ms`);
       return dictionaryCache.get(lang);
     }
-    
+
     // Проверяем, не загружается ли уже
     if (loadStatus[lang]?.loading) {
-      logger.log(`⏳ Словарь ${lang} уже загружается, ждем...`);
+      logger.log(`⏳ Словарь ${lang} уже загружается, ожидаем завершения...`);
       return waitForLoad(lang);
     }
-    
+
     loadStatus[lang].loading = true;
     loadStatus[lang].error = null;
-    
+
     try {
       // Загружаем из файла
       const url = chrome.runtime.getURL(`vocab/${lang}/words.txt`);
       logger.log(`📂 URL словаря: ${url}`);
-      
+
+      // === ЗАГРУЗКА ФАЙЛА ===
       const fetchStart = Date.now();
       const response = await fetch(url);
       const fetchTime = Date.now() - fetchStart;
-      
-      logger.log(`📡 Статус ответа: ${response.status} ${response.statusText}`);
-      logger.log(`⏱️ Время загрузки: ${fetchTime}ms`);
-      
+
+      logger.log(`\n📥 ЭТАП 1: Загрузка файла`);
+      logger.log(`   📡 Статус ответа: ${response.status} ${response.statusText}`);
+      logger.log(`   ⏱️ Время загрузки: ${fetchTime}ms (${(fetchTime / 1000).toFixed(2)} сек)`);
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
+      // === ПАРСИНГ ТЕКСТА ===
       const parseStart = Date.now();
       const text = await response.text();
       const parseTime = Date.now() - parseStart;
-      
-      logger.log(`📄 Размер текста: ${(text.length / 1024 / 1024).toFixed(2)} MB (${text.length.toLocaleString()} символов)`);
-      logger.log(`⏱️ Время парсинга: ${parseTime}ms`);
-      
-      // Разбиваем на слова и удаляем дубликаты
+
+      logger.log(`\n📥 ЭТАП 2: Чтение текста`);
+      logger.log(`   📄 Размер текста: ${(text.length / 1024 / 1024).toFixed(2)} MB (${text.length.toLocaleString()} символов)`);
+      logger.log(`   ⏱️ Время чтения: ${parseTime}ms`);
+
+      // === РАЗБИВКА НА СЛОВА ===
       const splitStart = Date.now();
       const words = text.split('\n')
         .map(w => w.toLowerCase().trim())
         .filter(w => w.length > 0);
       const splitTime = Date.now() - splitStart;
-      
-      logger.log(`📊 Всего слов: ${words.length.toLocaleString()}`);
-      logger.log(`⏱️ Время разбивки: ${splitTime}ms`);
-      
-      // Удаляем дубликаты через Set
+
+      logger.log(`\n📥 ЭТАП 3: Разбивка на слова`);
+      logger.log(`   📊 Всего слов: ${words.length.toLocaleString()}`);
+      logger.log(`   ⏱️ Время разбивки: ${splitTime}ms`);
+
+      // === УДАЛЕНИЕ ДУПЛИКАТОВ ===
       const uniqueStart = Date.now();
       const uniqueWords = [...new Set(words)];
       const uniqueTime = Date.now() - uniqueStart;
-      
+
       const duplicates = words.length - uniqueWords.length;
-      logger.log(`✨ Уникальных слов: ${uniqueWords.length.toLocaleString()}`);
-      logger.log(`🗑️ Удалено дубликатов: ${duplicates.toLocaleString()} (${(duplicates / words.length * 100).toFixed(1)}%)`);
-      logger.log(`⏱️ Время удаления дубликатов: ${uniqueTime}ms`);
-      
-      // Создаём Trie
-      logger.log('🌳 Создание Trie дерева...');
+      logger.log(`\n📥 ЭТАП 4: Удаление дубликатов`);
+      logger.log(`   ✨ Уникальных слов: ${uniqueWords.length.toLocaleString()}`);
+      logger.log(`   🗑️ Удалено дубликатов: ${duplicates.toLocaleString()} (${(duplicates / words.length * 100).toFixed(1)}%)`);
+      logger.log(`   ⏱️ Время удаления: ${uniqueTime}ms`);
+
+      // === СОЗДАНИЕ TRIE С ПРОГРЕССОМ ===
+      logger.log(`\n📥 ЭТАП 5: Построение Trie дерева`);
       const trieStart = Date.now();
       const trie = new Trie();
-      const inserted = trie.insertBatch(uniqueWords);
+      
+      // Вставляем слова батчами с логированием прогресса
+      const batchSize = 10000;
+      let insertedCount = 0;
+      
+      for (let i = 0; i < uniqueWords.length; i += batchSize) {
+        const batchStart = Date.now();
+        const batch = uniqueWords.slice(i, i + batchSize);
+        const batchInserted = trie.insertBatch(batch);
+        insertedCount += batchInserted;
+        const batchTime = Date.now() - batchStart;
+        
+        const progress = ((i + batch.length) / uniqueWords.length * 100).toFixed(1);
+        const wordsPerSec = (batchInserted / batchTime * 1000).toFixed(0);
+        
+        logger.log(`   📊 Прогресс: ${progress}% (${insertedCount.toLocaleString()}/${uniqueWords.length.toLocaleString()} слов) за ${batchTime}ms (${wordsPerSec} слов/сек)`);
+      }
+      
       const trieTime = Date.now() - trieStart;
-      
-      logger.log(`✓ Вставлено в Trie: ${inserted.toLocaleString()} слов`);
-      logger.log(`⏱️ Время создания Trie: ${trieTime}ms (${(inserted / trieTime * 1000).toFixed(0)} слов/сек)`);
-      
+
+      logger.log(`\n✅ Trie дерево построено`);
+      logger.log(`   ✓ Вставлено слов: ${insertedCount.toLocaleString()}`);
+      logger.log(`   ⏱️ Общее время построения: ${trieTime}ms (${(trieTime / 1000).toFixed(2)} сек)`);
+      logger.log(`   ⚡ Средняя скорость: ${(insertedCount / trieTime * 1000).toFixed(0)} слов/сек`);
+
       // Кэшируем
       dictionaryCache.set(lang, trie);
       loadStatus[lang].loaded = true;
-      loadStatus[lang].wordCount = inserted;
+      loadStatus[lang].wordCount = insertedCount;
       loadStatus[lang].loading = false;
-      
+
       const totalTime = Date.now() - loadStart;
-      
-      logger.log(`\n✅ СЛОВАРЬ ${lang.toUpperCase()} ЗАГРУЖЕН`);
-      logger.log(`📈 Статистика:`);
-      logger.log(`   • Слов в словаре: ${inserted.toLocaleString()}`);
-      logger.log(`   • Размер в памяти: ~${(inserted * 50 / 1024 / 1024).toFixed(2)} MB (оценка)`);
-      logger.log(`   • Общее время: ${totalTime}ms`);
-      logger.log(`   • Средняя скорость: ${(inserted / totalTime * 1000).toFixed(0)} слов/сек\n`);
-      
+
+      logger.log(`\n${'='.repeat(60)}`);
+      logger.log(`✅ СЛОВАРЬ ${lang.toUpperCase()} УСПЕШНО ЗАГРУЖЕН`);
+      logger.log(`${'='.repeat(60)}`);
+      logger.log(`📈 ИТОГОВАЯ СТАТИСТИКА:`);
+      logger.log(`   • Слов в словаре: ${insertedCount.toLocaleString()}`);
+      logger.log(`   • Размер в памяти: ~${(insertedCount * 50 / 1024 / 1024).toFixed(2)} MB (оценка)`);
+      logger.log(`   • Общее время загрузки: ${totalTime}ms (${(totalTime / 1000).toFixed(2)} сек)`);
+      logger.log(`   • Средняя скорость: ${(insertedCount / totalTime * 1000).toFixed(0)} слов/сек`);
+      logger.log(`\n⏱️ ДЕТАЛИЗАЦИЯ ПО ЭТАПАМ:`);
+      logger.log(`   • Загрузка файла: ${fetchTime}ms (${((fetchTime / totalTime) * 100).toFixed(1)}%)`);
+      logger.log(`   • Чтение текста: ${parseTime}ms (${((parseTime / totalTime) * 100).toFixed(1)}%)`);
+      logger.log(`   • Разбивка на слова: ${splitTime}ms (${((splitTime / totalTime) * 100).toFixed(1)}%)`);
+      logger.log(`   • Удаление дубликатов: ${uniqueTime}ms (${((uniqueTime / totalTime) * 100).toFixed(1)}%)`);
+      logger.log(`   • Построение Trie: ${trieTime}ms (${((trieTime / totalTime) * 100).toFixed(1)}%)`);
+      logger.log(`${'='.repeat(60)}\n`);
+
       return trie;
-      
+
     } catch (error) {
-      logger.error(`\n❌ ОШИБКА ЗАГРУЗКИ СЛОВАРЯ ${lang}`);
+      const totalTime = Date.now() - loadStart;
+      logger.error(`\n${'='.repeat(60)}`);
+      logger.error(`❌ ОШИБКА ЗАГРУЗКИ СЛОВАРЯ ${lang.toUpperCase()}`);
+      logger.error(`⏱️ Прошло времени: ${totalTime}ms`);
       logger.error(`Ошибка:`, error.message);
       logger.error(`Stack:`, error.stack);
+      logger.error(`${'='.repeat(60)}\n`);
       loadStatus[lang].error = error.message;
       loadStatus[lang].loading = false;
       throw error;
@@ -463,25 +505,47 @@ const DictionaryLoader = (function() {
   }
   
   /**
-   * Предварительная загрузка обоих словарей
+   * Предварительная загрузка обоих словарей с логированием
    */
   async function preloadAll() {
-    logger.log('=== ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ВСЕХ СЛОВАРЕЙ ===');
-    
+    const preloadStart = Date.now();
+    logger.log(`\n${'='.repeat(60)}`);
+    logger.log(`🚀 ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ВСЕХ СЛОВАРЕЙ`);
+    logger.log(`⏰ Время начала: ${new Date().toISOString()}`);
+    logger.log(`${'='.repeat(60)}`);
+
     const results = await Promise.allSettled([
       loadDictionary('en').catch(e => ({ error: e.message })),
       loadDictionary('ru').catch(e => ({ error: e.message }))
     ]);
+
+    const totalTime = Date.now() - preloadStart;
+
+    logger.log(`\n${'='.repeat(60)}`);
+    logger.log(`✅ ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ЗАВЕРШЕНА`);
+    logger.log(`⏱️ Общее время: ${totalTime}ms (${(totalTime / 1000).toFixed(2)} сек)`);
+    logger.log(`${'='.repeat(60)}`);
     
-    logger.log('Результаты загрузки:');
-    logger.log('  EN:', results[0].status === 'fulfilled' ? 
-      `${results[0].value.size()} слов` : `Ошибка: ${results[0].reason?.error}`);
-    logger.log('  RU:', results[1].status === 'fulfilled' ? 
-      `${results[1].value.size()} слов` : `Ошибка: ${results[1].reason?.error}`);
+    logger.log('\n📊 Результаты загрузки:');
     
+    const enResult = results[0];
+    const ruResult = results[1];
+    
+    if (enResult.status === 'fulfilled') {
+      logger.log(`   🇬🇧 EN: ✓ ${enResult.value.size()} слов`);
+    } else {
+      logger.error(`   🇬🇧 EN: ✗ Ошибка: ${enResult.reason?.error}`);
+    }
+    
+    if (ruResult.status === 'fulfilled') {
+      logger.log(`   🇷🇺 RU: ✓ ${ruResult.value.size()} слов`);
+    } else {
+      logger.error(`   🇷🇺 RU: ✗ Ошибка: ${ruResult.reason?.error}`);
+    }
+
     return {
-      en: results[0].status === 'fulfilled' ? results[0].value.size() : null,
-      ru: results[1].status === 'fulfilled' ? results[1].value.size() : null
+      en: enResult.status === 'fulfilled' ? enResult.value.size() : null,
+      ru: ruResult.status === 'fulfilled' ? ruResult.value.size() : null
     };
   }
   
@@ -507,7 +571,7 @@ const DictionaryLoader = (function() {
 })();
 
 // ============================================
-// SpellChecker - проверка слов
+// SpellChecker - проверка слов с логированием
 // ============================================
 
 const SpellChecker = (function() {
@@ -521,75 +585,101 @@ const SpellChecker = (function() {
     if (latinRegex.test(word)) return 'en';
     return null;
   }
-  
+
   /**
-   * Проверка слова
+   * Проверка слова с логированием времени
    */
   async function checkWord(word) {
+    const startTime = Date.now();
+    
     if (!word || word.trim() === '') {
       return { isValid: true, lang: null };
     }
-    
+
     const normalizedWord = word.trim();
     const lang = detectLanguage(normalizedWord);
-    
+
     if (!lang) {
       return { isValid: true, lang: null };
     }
-    
+
     // Проверяем, загружен ли словарь
+    let loadTime = 0;
     if (!DictionaryLoader.isLoaded(lang)) {
-      logger.log(`Словарь ${lang} не загружен, загружаем...`);
+      const loadStart = Date.now();
+      logger.log(`📚 Словарь ${lang} не загружен, начинаем загрузку...`);
       await DictionaryLoader.loadDictionary(lang);
+      loadTime = Date.now() - loadStart;
+      logger.log(`⏱️ Время загрузки словаря ${lang}: ${loadTime}ms`);
     }
-    
+
     const trie = DictionaryLoader.getTrie(lang);
     if (!trie) {
       logger.warn(`Trie для ${lang} не найден`);
       return { isValid: true, lang: null };
     }
-    
+
+    const checkStart = Date.now();
     const isValid = trie.has(normalizedWord);
-    logger.debug(`Проверка "${normalizedWord}" (${lang}): ${isValid ? '✓' : '✗'}`);
+    const checkTime = Date.now() - checkStart;
     
+    const totalTime = Date.now() - startTime;
+    
+    logger.log(`✓ Проверка "${normalizedWord}" (${lang}): ${isValid ? '✓ ВЕРНО' : '✗ ОШИБКА'} | Общее время: ${totalTime}ms${loadTime > 0 ? ` (загрузка: ${loadTime}ms, проверка: ${checkTime}ms)` : `, проверка: ${checkTime}ms`}`);
+
     return { isValid, lang };
   }
-  
+
   /**
-   * Получение подсказок с нечётким поиском
+   * Получение подсказок с логированием времени
    */
   async function getSuggestions(word, limit = 10) {
+    const startTime = Date.now();
+    
     if (!word || word.trim() === '') {
+      logger.log(`⏱️ getSuggestions: пустое слово, возврат [] за ${Date.now() - startTime}ms`);
       return [];
     }
-    
+
     const prefix = word.trim();
     const lang = detectLanguage(prefix);
     
     if (!lang) {
+      logger.log(`⏱️ getSuggestions: не определён язык для "${prefix}", возврат [] за ${Date.now() - startTime}ms`);
       return [];
     }
-    
+
     // Проверяем, загружен ли словарь
+    let loadTime = 0;
     if (!DictionaryLoader.isLoaded(lang)) {
-      logger.log(`Словарь ${lang} не загружен, загружаем для подсказок...`);
+      const loadStart = Date.now();
+      logger.log(`📚 Словарь ${lang} не загружен, загружаем для подсказок...`);
       await DictionaryLoader.loadDictionary(lang);
+      loadTime = Date.now() - loadStart;
+      logger.log(`⏱️ Время загрузки словаря ${lang}: ${loadTime}ms`);
     }
-    
+
     const trie = DictionaryLoader.getTrie(lang);
     if (!trie) {
+      logger.warn(`Trie для ${lang} не найден`);
       return [];
     }
-    
+
     // Умный поиск: префикс + нечёткий
-    const startTime = Date.now();
+    const searchStart = Date.now();
     let suggestions = trie.findSuggestions(prefix.toLowerCase(), limit);
-    const duration = Date.now() - startTime;
+    const searchTime = Date.now() - searchStart;
 
     // Дополнительная фильтрация: убираем точное совпадение с исходным словом
     suggestions = suggestions.filter(s => s !== prefix.toLowerCase());
 
-    logger.log(`findSuggestions("${prefix}", ${lang}): ${duration}ms, найдено: ${suggestions.length}`);
+    const totalTime = Date.now() - startTime;
+    
+    logger.log(`💡 Подсказки для "${prefix}" (${lang}): найдено ${suggestions.length} слов за ${totalTime}ms${loadTime > 0 ? ` (загрузка: ${loadTime}ms, поиск: ${searchTime}ms)` : `, поиск: ${searchTime}ms`}`);
+    
+    if (suggestions.length > 0) {
+      logger.log(`   Варианты: [${suggestions.slice(0, 5).join(', ')}${suggestions.length > 5 ? '...' : ''}]`);
+    }
 
     return suggestions;
   }
@@ -601,77 +691,83 @@ const SpellChecker = (function() {
 })();
 
 // ============================================
-// Обработчики сообщений
+// Обработчики сообщений с логированием времени
 // ============================================
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  logger.log('← Сообщение:', message.type, 'от:', sender.tab ? 'tab' : 'popup');
-  
+  const msgStart = Date.now();
+  logger.log(`\n← Сообщение: ${message.type} от: ${sender.tab ? 'tab' : 'popup'}`);
+
   switch (message.type) {
     case 'CHECK_WORD':
       SpellChecker.checkWord(message.word)
         .then(result => {
-          logger.debug('→ CHECK_WORD:', result);
+          const duration = Date.now() - msgStart;
+          logger.log(`→ CHECK_WORD: ${result.isValid ? '✓' : '✗'} | Общее время запроса: ${duration}ms`);
           sendResponse(result);
         })
         .catch(err => {
-          logger.error('Ошибка CHECK_WORD:', err);
+          const duration = Date.now() - msgStart;
+          logger.error(`→ CHECK_WORD: Ошибка за ${duration}ms:`, err.message);
           sendResponse({ isValid: false, error: err.message });
         });
       return true;
-    
+
     case 'GET_SUGGESTIONS':
       SpellChecker.getSuggestions(message.word, message.limit || 10)
         .then(result => {
-          logger.debug('→ GET_SUGGESTIONS:', result.length, 'предложений');
+          const duration = Date.now() - msgStart;
+          logger.log(`→ GET_SUGGESTIONS: ${result.length} предложений за ${duration}ms`);
           sendResponse(result);
         })
         .catch(err => {
-          logger.error('Ошибка GET_SUGGESTIONS:', err);
+          const duration = Date.now() - msgStart;
+          logger.error(`→ GET_SUGGESTIONS: Ошибка за ${duration}ms:`, err.message);
           sendResponse([]);
         });
       return true;
-    
+
     case 'GET_STATUS':
       const status = DictionaryLoader.getStatus();
-      logger.log('→ GET_STATUS:', status);
+      logger.log(`→ GET_STATUS: ${status.totalLoaded} слов загружено`);
       sendResponse(status);
       return true;
-    
+
     case 'PRELOAD_ALL':
+      logger.log('→ PRELOAD_ALL: Начинаем предварительную загрузку всех словарей...');
       DictionaryLoader.preloadAll()
         .then(result => {
-          logger.log('→ PRELOAD_ALL:', result);
+          logger.log(`→ PRELOAD_ALL: Завершено за ${Date.now() - msgStart}ms`, result);
           sendResponse(result);
         })
         .catch(err => {
-          logger.error('Ошибка PRELOAD_ALL:', err);
+          logger.error(`→ PRELOAD_ALL: Ошибка за ${Date.now() - msgStart}ms:`, err.message);
           sendResponse({ error: err.message });
         });
       return true;
-    
+
     case 'CLEAR_CACHE':
       DictionaryLoader.clearCache();
-      logger.log('→ CLEAR_CACHE: кэш очищен');
+      logger.log('→ CLEAR_CACHE: Кэш очищен');
       sendResponse({ success: true });
       return true;
-    
+
     case 'GET_LOGS':
       logger.getLogs().then(logs => {
-        logger.log('→ GET_LOGS:', logs.length, 'записей');
+        logger.log(`→ GET_LOGS: ${logs.length} записей`);
         sendResponse(logs);
       });
       return true;
-    
+
     case 'CLEAR_LOGS':
       logger.clearLogs().then(() => {
-        logger.log('→ CLEAR_LOGS: логи очищены');
+        logger.log('→ CLEAR_LOGS: Логи очищены');
         sendResponse({ success: true });
       });
       return true;
-    
+
     default:
-      logger.warn('Неизвестный тип сообщения:', message.type);
+      logger.warn(`Неизвестный тип сообщения: ${message.type}`);
       sendResponse({ error: 'Unknown message type' });
   }
 });
