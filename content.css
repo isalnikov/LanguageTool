@@ -23,6 +23,17 @@
   background-color: rgba(255, 0, 0, 0.15);
 }
 
+/* Правильные слова - без подсветки, но с cursor pointer для tooltip */
+.spell-word {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.spell-word:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  border-bottom: 2px dotted #667eea;
+}
+
 /* Альтернативный стиль для браузеров без поддержки wavy */
 @supports not (text-decoration: underline wavy #ff0000) {
   .spell-error {

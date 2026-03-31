@@ -225,7 +225,11 @@ class SpellChecker {
       logger.warn(`Найдено ошибок: ${misspelled.length}`);
       logger.warn(`Ошибочные слова: [${misspelled.map(m => m.word).join(', ')}]`);
 
-      if (this.activeElement && this.activeElement.tagName?.toLowerCase() === 'textarea') {
+      // Создаём overlay для textarea и input type="text"
+      const tagName = this.activeElement?.tagName?.toLowerCase();
+      const inputType = this.activeElement?.type?.toLowerCase();
+      
+      if (tagName === 'textarea' || (tagName === 'input' && inputType === 'text')) {
         this.highlightErrors(text, misspelled);
       }
     } else {
@@ -358,34 +362,41 @@ class SpellChecker {
       return;
     }
 
+    // Проверяем, есть ли уже overlay
     let overlay = this.activeElement.parentElement?.querySelector('.spell-check-overlay');
 
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.className = 'spell-check-overlay';
-      this.activeElement.parentElement?.insertBefore(overlay, this.activeElement);
+      // Вставляем overlay сразу после активного элемента
+      this.activeElement.parentNode?.insertBefore(overlay, this.activeElement.nextSibling);
+      logger.log('[RENDER] overlay создан и вставлён после элемента');
     }
 
     this.syncOverlayStyles(this.activeElement, overlay);
     this.renderErrors(overlay, text, misspelled);
   }
 
-  syncOverlayStyles(textarea, overlay) {
-    const styles = window.getComputedStyle(textarea);
-    
+  syncOverlayStyles(element, overlay) {
+    const styles = window.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+
     overlay.style.position = 'absolute';
-    overlay.style.top = textarea.offsetTop + 'px';
-    overlay.style.left = textarea.offsetLeft + 'px';
-    overlay.style.width = textarea.offsetWidth + 'px';
-    overlay.style.height = textarea.offsetHeight + 'px';
+    overlay.style.top = (rect.top - element.ownerDocument.defaultView.scrollY) + 'px';
+    overlay.style.left = (rect.left - element.ownerDocument.defaultView.scrollX) + 'px';
+    overlay.style.width = rect.width + 'px';
+    overlay.style.height = rect.height + 'px';
     overlay.style.padding = styles.padding;
     overlay.style.fontSize = styles.fontSize;
     overlay.style.fontFamily = styles.fontFamily;
     overlay.style.lineHeight = styles.lineHeight;
-    overlay.style.whiteSpace = 'pre-wrap';
-    overlay.style.wordWrap = 'break-word';
+    overlay.style.whiteSpace = element.tagName.toLowerCase() === 'textarea' ? 'pre-wrap' : 'nowrap';
+    overlay.style.wordWrap = element.tagName.toLowerCase() === 'textarea' ? 'break-word' : 'normal';
     overlay.style.pointerEvents = 'none';
     overlay.style.overflow = 'hidden';
+    overlay.style.zIndex = '1000';
+    
+    logger.log('[RENDER] syncOverlayStyles применены');
   }
 
   renderErrors(overlay, text, misspelled) {
