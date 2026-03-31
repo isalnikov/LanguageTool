@@ -321,16 +321,40 @@
     <div id="extension-warning" class="warning-box" style="display: none;">
       <h3>⚠️ Расширение не активно</h3>
       <p>Эта тестовая страница работает только с установленным расширением LanguageTool Offline.</p>
+      
+      <h4 style="color: #856404; margin: 16px 0 12px 0;">Возможные причины:</h4>
       <ol>
-        <li>Откройте <code>chrome://extensions/</code></li>
-        <li>Найдите <strong>LanguageTool Offline</strong></li>
-        <li>Убедитесь что расширение включено</li>
-        <li>Обновите эту страницу</li>
+        <li><strong>Расширение не установлено:</strong>
+          <ul>
+            <li>Откройте <code>chrome://extensions/</code></li>
+            <li>Включите <strong>Режим разработчика</strong> (справа сверху)</li>
+            <li>Нажмите <strong>Загрузить распакованное расширение</strong></li>
+            <li>Выберите папку с расширением</li>
+          </ul>
+        </li>
+        <li><strong>Расширение отключено:</strong>
+          <ul>
+            <li>Откройте <code>chrome://extensions/</code></li>
+            <li>Найдите <strong>LanguageTool Offline</strong></li>
+            <li>Включите переключатель</li>
+          </ul>
+        </li>
+        <li><strong>Нет доступа к file:// URL:</strong>
+          <ul>
+            <li>Откройте <code>chrome://extensions/</code></li>
+            <li>Найдите <strong>LanguageTool Offline</strong></li>
+            <li>Нажмите <strong>Подробнее</strong></li>
+            <li>Включите опцию <strong>«Разрешить использование в режиме инкогнито»</strong> и <strong>«Разрешить доступ к URL файлов»</strong></li>
+          </ul>
+        </li>
       </ol>
-      <p>Или откройте страницу через расширение:</p>
+      
+      <h4 style="color: #856404; margin: 16px 0 12px 0;">Альтернативный вариант:</h4>
+      <p>Откройте тестовую страницу через локальный сервер:</p>
       <ul>
-        <li>Кликните правой кнопкой на иконке расширения</li>
-        <li>Или откройте любую другую страницу и начните печатать</li>
+        <li><code>python -m http.server 8000</code></li>
+        <li><code>http-server</code> (npm)</li>
+        <li>Или откройте любую другую страницу в интернете</li>
       </ul>
     </div>
 
@@ -508,13 +532,14 @@
     async function updateStatus() {
       try {
         // Проверяем доступность chrome.runtime
-        if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
-          console.warn('[test.html] chrome.runtime недоступен');
+        if (!chrome || !chrome.runtime || !chrome.runtime.id) {
+          console.warn('[test.html] chrome.runtime недоступен или extension не установлен');
           setUnavailableStatus();
           return;
         }
-        
+
         const status = await new Promise((resolve, reject) => {
+          // Проверяем, можем ли мы отправить сообщение
           chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (response) => {
             if (chrome.runtime.lastError) {
               reject(new Error(chrome.runtime.lastError.message));
@@ -523,17 +548,17 @@
             }
           });
         });
-        
+
         const indicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
         const enCount = document.getElementById('en-count');
         const ruCount = document.getElementById('ru-count');
         const totalCount = document.getElementById('total-count');
-        
+
         if (status) {
           const enLoaded = status.en?.loaded || false;
           const ruLoaded = status.ru?.loaded || false;
-          
+
           if (enLoaded || ruLoaded) {
             indicator.classList.add('ready');
             statusText.textContent = 'Словари загружены';
@@ -551,11 +576,11 @@
           setUnavailableStatus();
         }
       } catch (error) {
-        console.error('[test.html] Ошибка получения статуса:', error);
+        console.error('[test.html] Ошибка получения статуса:', error.message);
         setUnavailableStatus();
       }
     }
-    
+
     function setUnavailableStatus() {
       const indicator = document.getElementById('status-indicator');
       const statusText = document.getElementById('status-text');
@@ -563,13 +588,14 @@
       const ruCount = document.getElementById('ru-count');
       const totalCount = document.getElementById('total-count');
       const warningBox = document.getElementById('extension-warning');
-      
+
       indicator.classList.remove('ready');
+      indicator.style.background = '#f44336';
       statusText.textContent = 'Расширение не активно';
       enCount.textContent = '-';
       ruCount.textContent = '-';
       totalCount.textContent = '-';
-      
+
       // Показываем предупреждение
       if (warningBox) {
         warningBox.style.display = 'block';
@@ -577,13 +603,19 @@
     }
 
     // Обновление статуса при загрузке
-    if (chrome && chrome.runtime) {
-      updateStatus();
-      setInterval(updateStatus, 5000);
-    } else {
-      console.warn('[test.html] chrome.runtime недоступен - страница открыта без расширения');
-      setUnavailableStatus();
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[test.html] Страница загружена');
+      
+      // Проверяем, что это chrome-extension:// или file:// с установленным расширением
+      if (chrome && chrome.runtime && chrome.runtime.id) {
+        console.log('[test.html] Extension ID:', chrome.runtime.id);
+        updateStatus();
+        setInterval(updateStatus, 5000);
+      } else {
+        console.warn('[test.html] chrome.runtime недоступен - страница открыта без расширения');
+        setUnavailableStatus();
+      }
+    });
   </script>
 </body>
 </html>
