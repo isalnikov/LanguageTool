@@ -152,10 +152,28 @@
   font-weight: 600;
 }
 
+.spell-check-tooltip.tooltip-hover .tooltip-header-hover.error {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+}
+
+.spell-check-tooltip.tooltip-hover .tooltip-header-hover.success {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+}
+
 .spell-check-tooltip.tooltip-hover .tooltip-header-hover strong {
   color: #ffffff;
   text-decoration: underline;
   text-decoration-style: wavy;
+}
+
+.spell-check-tooltip.tooltip-hover .tooltip-info-success {
+  padding: 12px 14px;
+  background: #f0fff0;
+  color: #2e7d32;
+  font-size: 13px;
+  text-align: center;
+  font-style: italic;
+  border-top: 1px solid #c8e6c9;
 }
 
 .spell-check-tooltip.tooltip-hover .suggestions-list-hover {
@@ -578,6 +596,12 @@
   
   .spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-thumb:hover {
     background: #666;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .tooltip-info-success {
+    background: #1b5e20;
+    color: #a5d6a7;
+    border-top-color: #2e7d32;
   }
   
   .spell-check-popup .popup-content {
