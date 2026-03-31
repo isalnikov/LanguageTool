@@ -199,18 +199,19 @@ class SpellChecker {
         logger.debug(`  Пропуск (исключение): "${word}"`);
         continue;
       }
-      
+
       const result = await this.checkWord(word);
-      
+
       if (!result.isValid) {
         misspelled.push({
           word,
           lang: result.lang,
-          position: words.indexOf(word)
+          position: words.indexOf(word),
+          uncertain: result.uncertain || false
         });
         this.errorCount++;
-        
-        logger.log(`  ✗ ОШИБКА: "${word}" (язык: ${result || 'unknown'})`);
+
+        logger.log(`  ✗ ОШИБКА: "${word}" (язык: ${result.lang || 'unknown'})${result.uncertain ? ' [неопределённо]' : ''}`);
       } else {
         logger.debug(`  ✓ Верно: "${word}"`);
       }
@@ -245,8 +246,10 @@ class SpellChecker {
     return new Promise((resolve) => {
       // Проверяем, доступен ли runtime перед отправкой
       if (!chrome.runtime?.id) {
-        logger.debug(`  Проверка "${word}": runtime недоступен`);
-        resolve({ isValid: true, lang: null });
+        logger.debug(`  Проверка "${word}": runtime недоступен, считаем ошибкой`);
+        // Если runtime недоступен, предполагаем что слово может быть с ошибкой
+        // и возвращаем false для дальнейшей проверки
+        resolve({ isValid: false, lang: null, uncertain: true });
         return;
       }
 
@@ -260,10 +263,10 @@ class SpellChecker {
               const lastError = chrome.runtime?.lastError;
               if (lastError) {
                 logger.debug(`  Проверка "${word}": ${lastError.message}`);
-                resolve({ isValid: true, lang: null });
+                resolve({ isValid: false, lang: null, uncertain: true });
                 return;
               }
-              
+
               logger.debug(`  Проверка "${word}":`, response);
               resolve(response);
             }
@@ -271,7 +274,7 @@ class SpellChecker {
         } catch (error) {
           // Ловим ошибки отправки сообщения
           logger.debug(`  Проверка "${word}": ошибка отправки (${error.message})`);
-          resolve({ isValid: true, lang: null });
+          resolve({ isValid: false, lang: null, uncertain: true });
         }
       }, 0);
     });
