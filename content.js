@@ -884,14 +884,22 @@ class SpellChecker {
   // ============================================
 
   createDebugPanel() {
+    // Проверяем, что это top window (одна панель на страницу)
+    if (window !== window.top) return;
+    
+    // Проверяем, есть ли уже панель
     if (document.getElementById('spell-debug-panel')) return;
 
     const panel = document.createElement('div');
     panel.id = 'spell-debug-panel';
+    panel.setAttribute('data-dragsource', 'header');
     panel.innerHTML = `
-      <div class="debug-header">
+      <div class="debug-header" id="debug-panel-header">
         <span>🔍 LanguageTool Debug</span>
-        <button class="debug-toggle">▼</button>
+        <div class="debug-controls">
+          <button class="debug-minimize" title="Свернуть">−</button>
+          <button class="debug-toggle" title="Развернуть/свернуть">▼</button>
+        </div>
       </div>
       <div class="debug-content">
         <div class="debug-stat">
@@ -909,10 +917,10 @@ class SpellChecker {
         <div class="debug-log" id="debug-log"></div>
       </div>
     `;
-    
+
     document.body.appendChild(panel);
-    
-    // Стили
+
+    // Стили панели
     panel.style.cssText = `
       position: fixed;
       bottom: 10px;
@@ -927,21 +935,111 @@ class SpellChecker {
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
       z-index: 100000;
       overflow: hidden;
+      user-select: none;
+    `;
+
+    // Стили заголовка для перетаскивания
+    const header = panel.querySelector('#debug-panel-header');
+    header.style.cssText = `
+      cursor: move;
+      padding: 10px 12px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    `;
+    header.style.cursor = 'move';
+
+    // Контролы
+    const controls = panel.querySelector('.debug-controls');
+    controls.style.display = 'flex';
+    controls.style.gap = '4px';
+
+    const minimizeBtn = panel.querySelector('.debug-minimize');
+    minimizeBtn.style.cssText = `
+      background: #0f3460;
+      border: none;
+      color: #eee;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 16px;
+      line-height: 1;
     `;
     
-    panel.querySelector('.debug-toggle').addEventListener('click', () => {
+    const toggleBtn = panel.querySelector('.debug-toggle');
+    toggleBtn.style.cssText = `
+      background: #0f3460;
+      border: none;
+      color: #eee;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1;
+    `;
+
+    // Логирование заголовка для перетаскивания
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return; // Не перетаскивать при клике на кнопки
+      
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      const rect = panel.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+      
+      panel.style.transition = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      panel.style.left = (startLeft + dx) + 'px';
+      panel.style.top = (startTop + dy) + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      panel.style.transition = '';
+    });
+
+    // Кнопки управления
+    toggleBtn.addEventListener('click', () => {
       const content = panel.querySelector('.debug-content');
-      const btn = panel.querySelector('.debug-toggle');
       if (content.style.display === 'none') {
         content.style.display = 'block';
-        btn.textContent = '▼';
+        toggleBtn.textContent = '▼';
       } else {
         content.style.display = 'none';
-        btn.textContent = '▲';
+        toggleBtn.textContent = '▲';
       }
     });
-    
-    logger.log('Debug панель создана');
+
+    minimizeBtn.addEventListener('click', () => {
+      panel.style.display = 'none';
+    });
+
+    // Двойной клик для восстановления
+    header.addEventListener('dblclick', () => {
+      panel.style.display = 'block';
+    });
+
+    logger.log('Debug панель создана (одна на страницу)');
   }
 
   updateDebugPanel() {
