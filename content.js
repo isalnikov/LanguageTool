@@ -321,6 +321,7 @@ class SpellChecker {
         // Используем setTimeout для безопасного выполнения
         setTimeout(() => {
           try {
+            logger.log(`  → Запрос подсказок для "${word}"`);
             chrome.runtime.sendMessage(
               { type: 'GET_SUGGESTIONS', word, limit: 15 },
               (response) => {
@@ -332,11 +333,11 @@ class SpellChecker {
                   return;
                 }
 
-                logger.log(`  Подсказки для "${word}": найдено ${response?.length || 0}`);
+                logger.log(`  ← Получено подсказок для "${word}": ${response?.length || 0}`);
                 if (response && response.length > 0) {
                   logger.log(`  Варианты: [${response.join(', ')}]`);
                 }
-                resolve(response);
+                resolve(response || []);
               }
             );
           } catch (error) {
@@ -388,13 +389,17 @@ class SpellChecker {
   }
 
   renderErrors(overlay, text, misspelled) {
+    logger.log(`[RENDER] renderErrors вызван, text="${text.slice(0, 50)}...", misspelled=[${misspelled.map(m => m.word).join(', ')}]`);
+    
     let html = text;
 
     // Сначала помечаем все слова как проверяемые
     const allWords = text.match(/\b[\wа-яёА-ЯЁ]+\b/g) || [];
+    logger.log(`[RENDER] Найдено слов: ${allWords.length}, [${allWords.join(', ')}]`);
     
     // Создаём множество ошибочных слов для быстрой проверки
     const misspelledSet = new Set(misspelled.map(m => m.word.toLowerCase()));
+    logger.log(`[RENDER] Ошибочные слова (set): [${Array.from(misspelledSet).join(', ')}]`);
 
     // Заменяем все слова на спаны с данными
     allWords.forEach(word => {
@@ -408,6 +413,7 @@ class SpellChecker {
           regex,
           `<span class="spell-error" data-word="${escapedWord}" tabindex="0">${word}</span>`
         );
+        logger.log(`[RENDER] Помечено ошибочное слово: "${word}"`);
       } else {
         // Правильное слово - обычная подсветка при наведении
         const regex = new RegExp(`\\b${this.escapeRegex(word)}\\b`, 'gi');
@@ -415,19 +421,24 @@ class SpellChecker {
           regex,
           `<span class="spell-word" data-word="${escapedWord}" tabindex="0">${word}</span>`
         );
+        logger.log(`[RENDER] Помечено правильное слово: "${word}"`);
       }
     });
 
     overlay.innerHTML = html;
+    logger.log(`[RENDER] overlay.innerHTML установлен`);
 
     // Добавляем обработчики для ошибочных слов
-    overlay.querySelectorAll('.spell-error').forEach(el => {
+    const errorElements = overlay.querySelectorAll('.spell-error');
+    logger.log(`[RENDER] Найдено .spell-error элементов: ${errorElements.length}`);
+    
+    errorElements.forEach(el => {
       // Клик - замена слова
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         const word = el.dataset.word;
         const rect = el.getBoundingClientRect();
-        logger.log(`Клик на ошибочном слове: "${word}"`);
+        logger.log(`[RENDER] Клик на ошибочном слове: "${word}"`);
         this.showTooltip(word, rect.left, rect.bottom + 5, true);
       });
 
@@ -435,6 +446,7 @@ class SpellChecker {
       el.addEventListener('mouseenter', (e) => {
         const word = el.dataset.word;
         const rect = el.getBoundingClientRect();
+        logger.log(`[RENDER] Hover на ошибочном слове: "${word}"`);
         this.showTooltipOnHover(word, rect.left, rect.bottom + 5, true);
       });
 
@@ -455,11 +467,15 @@ class SpellChecker {
     });
 
     // Добавляем обработчики для правильных слов
-    overlay.querySelectorAll('.spell-word').forEach(el => {
+    const wordElements = overlay.querySelectorAll('.spell-word');
+    logger.log(`[RENDER] Найдено .spell-word элементов: ${wordElements.length}`);
+    
+    wordElements.forEach(el => {
       // Hover - показ tooltip с подтверждением
       el.addEventListener('mouseenter', (e) => {
         const word = el.dataset.word;
         const rect = el.getBoundingClientRect();
+        logger.log(`[RENDER] Hover на правильном слове: "${word}"`);
         this.showTooltipOnHover(word, rect.left, rect.bottom + 5, false);
       });
 
@@ -479,7 +495,7 @@ class SpellChecker {
       });
     });
 
-    logger.log(`Добавлены обработчики на ${misspelled.length} ошибок и ${overlay.querySelectorAll('.spell-word').length} правильных слов`);
+    logger.log(`[RENDER] Обработчики добавлены: ${errorElements.length} ошибок, ${wordElements.length} правильных слов`);
   }
 
   escapeRegex(string) {
@@ -536,6 +552,8 @@ class SpellChecker {
   }
 
   async showTooltipOnHover(word, x, y, isMisspelled = false) {
+    logger.log(`[TOOLTIP] showTooltipOnHover: "${word}", isMisspelled=${isMisspelled}`);
+    
     // Очищаем предыдущий таймер
     if (this.hoverTooltipTimer) {
       clearTimeout(this.hoverTooltipTimer);
@@ -544,12 +562,20 @@ class SpellChecker {
     // Показываем tooltip с задержкой
     this.hoverTooltipTimer = setTimeout(async () => {
       const tooltip = document.getElementById('spell-check-tooltip');
-      if (!tooltip) return;
+      if (!tooltip) {
+        logger.error('[TOOLTIP] Элемент tooltip не найден!');
+        return;
+      }
 
+      logger.log(`[TOOLTIP] Получаем подсказки для "${word}"...`);
+      
       // Получаем подсказки для слова
       const suggestions = await this.getSuggestions(word);
+      
+      logger.log(`[TOOLTIP] Получено подсказок: ${suggestions.length}`);
 
       if (isMisspelled) {
+        logger.log(`[TOOLTIP] Слово с ошибкой, показываем варианты замены`);
         // Слово с ошибкой - показываем варианты замены
         if (suggestions.length === 0) {
           tooltip.innerHTML = `
@@ -584,13 +610,14 @@ class SpellChecker {
             el.addEventListener('click', (e) => {
               e.stopPropagation();
               const replacement = el.dataset.word;
-              logger.log(`Выбрана замена: "${replacement}"`);
+              logger.log(`[TOOLTIP] Выбрана замена: "${replacement}"`);
               this.replaceWord(replacement);
               this.hideTooltip();
             });
           });
         }
       } else {
+        logger.log(`[TOOLTIP] Слово без ошибки, показываем подтверждение`);
         // Слово без ошибки - показываем подтверждение
         tooltip.innerHTML = `
           <div class="tooltip-header-hover success">
@@ -606,6 +633,8 @@ class SpellChecker {
       tooltip.style.left = x + 'px';
       tooltip.style.top = y + 'px';
       tooltip.classList.add('tooltip-hover');
+      
+      logger.log(`[TOOLTIP] Tooltip показан`);
 
       this.adjustTooltipPosition(tooltip);
     }, this.hoverTooltipDelay);
