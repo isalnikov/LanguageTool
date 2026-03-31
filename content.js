@@ -229,13 +229,19 @@ class SpellChecker {
       const tagName = this.activeElement?.tagName?.toLowerCase();
       const inputType = this.activeElement?.type?.toLowerCase();
       
-      logger.log(`[CHECK] activeElement: ${tagName}${inputType ? `[${inputType}]` : ''}`);
+      logger.log(`[CHECK] activeElement.tagName="${this.activeElement?.tagName}"`);
+      logger.log(`[CHECK] activeElement.tagName.toLowerCase()="${tagName}"`);
+      logger.log(`[CHECK] activeElement.type="${this.activeElement?.type}"`);
+      logger.log(`[CHECK] inputType="${inputType}"`);
+      logger.log(`[CHECK] tagName === 'textarea': ${tagName === 'textarea'}`);
+      logger.log(`[CHECK] tagName === 'input': ${tagName === 'input'}`);
+      logger.log(`[CHECK] inputType === 'text': ${inputType === 'text'}`);
       
       if (tagName === 'textarea' || (tagName === 'input' && inputType === 'text')) {
-        logger.log('[CHECK] Вызываем highlightErrors...');
+        logger.log('[CHECK] ✓ Вызываем highlightErrors...');
         this.highlightErrors(text, misspelled);
       } else {
-        logger.warn(`[CHECK] Не создаём overlay: tagName=${tagName}, inputType=${inputType}`);
+        logger.warn(`[CHECK] ✗ Не создаём overlay: tagName=${tagName}, inputType=${inputType}`);
       }
     } else {
       logger.log('[CHECK] ✓ Ошибок не найдено');
