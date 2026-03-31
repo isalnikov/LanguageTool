@@ -243,8 +243,6 @@ class SpellChecker {
 
   checkWord(word) {
     return new Promise((resolve) => {
-      const startTime = Date.now();
-
       // Проверяем, доступен ли runtime перед отправкой
       if (!chrome.runtime?.id) {
         logger.debug(`  Проверка "${word}": runtime недоступен`);
@@ -252,40 +250,35 @@ class SpellChecker {
         return;
       }
 
-      try {
-        chrome.runtime.sendMessage(
-          { type: 'CHECK_WORD', word },
-          (response) => {
-            // Обёртываем callback в try-catch для обработки ошибок контекста
-            try {
-              const duration = Date.now() - startTime;
-
-              if (chrome.runtime.lastError) {
-                logger.debug(`  Проверка "${word}": ошибка контекста (${chrome.runtime.lastError.message})`);
+      // Используем setTimeout для безопасного выполнения
+      setTimeout(() => {
+        try {
+          chrome.runtime.sendMessage(
+            { type: 'CHECK_WORD', word },
+            (response) => {
+              // Проверяем наличие ошибки после получения ответа
+              const lastError = chrome.runtime?.lastError;
+              if (lastError) {
+                logger.debug(`  Проверка "${word}": ${lastError.message}`);
                 resolve({ isValid: true, lang: null });
-              } else {
-                logger.debug(`  Проверка "${word}": ${duration}ms, результат:`, response);
-                resolve(response);
+                return;
               }
-            } catch (error) {
-              // Extension context invalidated в callback
-              logger.debug(`  Проверка "${word}": контекст недействителен в callback (${error.message})`);
-              resolve({ isValid: true, lang: null });
+              
+              logger.debug(`  Проверка "${word}":`, response);
+              resolve(response);
             }
-          }
-        );
-      } catch (error) {
-        // Extension context invalidated - расширение перезагружено
-        logger.debug(`  Проверка "${word}": контекст недействителен (${error.message})`);
-        resolve({ isValid: true, lang: null });
-      }
+          );
+        } catch (error) {
+          // Ловим ошибки отправки сообщения
+          logger.debug(`  Проверка "${word}": ошибка отправки (${error.message})`);
+          resolve({ isValid: true, lang: null });
+        }
+      }, 0);
     });
   }
 
   getSuggestions(word) {
     return new Promise((resolve) => {
-      const startTime = Date.now();
-
       // Проверяем, доступен ли runtime перед отправкой
       if (!chrome.runtime?.id) {
         logger.debug(`  Подсказки для "${word}": runtime недоступен`);
@@ -293,36 +286,33 @@ class SpellChecker {
         return;
       }
 
-      try {
-        chrome.runtime.sendMessage(
-          { type: 'GET_SUGGESTIONS', word, limit: 15 },
-          (response) => {
-            // Обёртываем callback в try-catch для обработки ошибок контекста
-            try {
-              const duration = Date.now() - startTime;
-
-              if (chrome.runtime.lastError) {
-                logger.debug(`  Подсказки для "${word}": ошибка контекста (${chrome.runtime.lastError.message})`);
+      // Используем setTimeout для безопасного выполнения
+      setTimeout(() => {
+        try {
+          chrome.runtime.sendMessage(
+            { type: 'GET_SUGGESTIONS', word, limit: 15 },
+            (response) => {
+              // Проверяем наличие ошибки после получения ответа
+              const lastError = chrome.runtime?.lastError;
+              if (lastError) {
+                logger.debug(`  Подсказки для "${word}": ${lastError.message}`);
                 resolve([]);
-              } else {
-                logger.log(`  Подсказки для "${word}": ${duration}ms, найдено: ${response?.length || 0}`);
-                if (response && response.length > 0) {
-                  logger.log(`  Варианты: [${response.join(', ')}]`);
-                }
-                resolve(response);
+                return;
               }
-            } catch (error) {
-              // Extension context invalidated в callback
-              logger.debug(`  Подсказки для "${word}": контекст недействителен в callback (${error.message})`);
-              resolve([]);
+              
+              logger.log(`  Подсказки для "${word}": найдено ${response?.length || 0}`);
+              if (response && response.length > 0) {
+                logger.log(`  Варианты: [${response.join(', ')}]`);
+              }
+              resolve(response);
             }
-          }
-        );
-      } catch (error) {
-        // Extension context invalidated - расширение перезагружено
-        logger.debug(`  Подсказки для "${word}": контекст недействителен (${error.message})`);
-        resolve([]);
-      }
+          );
+        } catch (error) {
+          // Ловим ошибки отправки сообщения
+          logger.debug(`  Подсказки для "${word}": ошибка отправки (${error.message})`);
+          resolve([]);
+        }
+      }, 0);
     });
   }
 
