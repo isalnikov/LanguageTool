@@ -354,21 +354,22 @@ class SpellChecker {
 
   renderErrors(overlay, text, misspelled) {
     let html = text;
-    
+
     const sortedMisspelled = [...misspelled].sort((a, b) => b.word.length - a.word.length);
-    
+
     for (const error of sortedMisspelled) {
       const regex = new RegExp(`\\b${this.escapeRegex(error.word)}\\b`, 'gi');
       html = html.replace(
         regex,
-        `<span class="spell-error" data-word="${error.word}">${error.word}</span>`
+        `<span class="spell-error" data-word="${error.word}" tabindex="0">${error.word}</span>`
       );
     }
-    
+
     overlay.innerHTML = html;
-    
-    // Добавляем обработчик клика на ошибочные слова
+
+    // Добавляем обработчики для ошибочных слов
     overlay.querySelectorAll('.spell-error').forEach(el => {
+      // Клик - замена слова
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         const word = el.dataset.word;
@@ -376,9 +377,31 @@ class SpellChecker {
         logger.log(`Клик на ошибочном слове: "${word}"`);
         this.showTooltip(word, rect.left, rect.bottom + 5);
       });
+      
+      // Hover - показ tooltip с кандидатами
+      el.addEventListener('mouseenter', (e) => {
+        const word = el.dataset.word;
+        const rect = el.getBoundingClientRect();
+        this.showTooltipOnHover(word, rect.left, rect.bottom + 5);
+      });
+      
+      el.addEventListener('mouseleave', () => {
+        this.hideTooltipOnHover();
+      });
+      
+      // Фокус для клавиатуры
+      el.addEventListener('focus', (e) => {
+        const word = el.dataset.word;
+        const rect = el.getBoundingClientRect();
+        this.showTooltipOnHover(word, rect.left, rect.bottom + 5);
+      });
+      
+      el.addEventListener('blur', () => {
+        this.hideTooltipOnHover();
+      });
     });
-    
-    logger.log(`Добавлены обработчики клика на ${misspelled.length} ошибок`);
+
+    logger.log(`Добавлены обработчики на ${misspelled.length} ошибок`);
   }
 
   escapeRegex(string) {
@@ -397,16 +420,20 @@ class SpellChecker {
     tooltip.addEventListener('click', this.handleTooltipClick.bind(this));
   }
 
+  // Таймер для hover tooltip
+  hoverTooltipTimer = null;
+  hoverTooltipDelay = 300; // 300ms задержка перед показом
+
   async showTooltip(word, x, y) {
     const tooltip = document.getElementById('spell-check-tooltip');
     if (!tooltip) return;
-    
+
     logger.log('=== ПОКАЗ TOOLTIP ===');
     logger.log(`Слово: "${word}"`);
     logger.log(`Позиция: (${x}, ${y})`);
-    
+
     const suggestions = await this.getSuggestions(word);
-    
+
     if (suggestions.length === 0) {
       tooltip.innerHTML = '<div class="no-suggestions">Нет предложений</div>';
       logger.warn('Нет предложений для замены');
@@ -414,20 +441,89 @@ class SpellChecker {
       const suggestionsHtml = suggestions
         .map(s => `<div class="suggestion-item" data-word="${this.escapeAttr(s)}">${s}</div>`)
         .join('');
-      
+
       tooltip.innerHTML = `
         <div class="tooltip-header">Заменить на:</div>
         <div class="suggestions-list">${suggestionsHtml}</div>
       `;
-      
+
       logger.log(`Показано ${suggestions.length} вариантов замены`);
     }
-    
+
     tooltip.style.display = 'block';
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
-    
+
     this.adjustTooltipPosition(tooltip);
+  }
+
+  async showTooltipOnHover(word, x, y) {
+    // Очищаем предыдущий таймер
+    if (this.hoverTooltipTimer) {
+      clearTimeout(this.hoverTooltipTimer);
+    }
+
+    // Показываем tooltip с задержкой
+    this.hoverTooltipTimer = setTimeout(async () => {
+      const tooltip = document.getElementById('spell-check-tooltip');
+      if (!tooltip) return;
+
+      // Получаем подсказки
+      const suggestions = await this.getSuggestions(word);
+
+      if (suggestions.length === 0) {
+        tooltip.innerHTML = `
+          <div class="tooltip-header-hover">
+            <strong>${word}</strong> — нет в словаре
+          </div>
+          <div class="no-suggestions">Нет предложений для замены</div>
+        `;
+      } else {
+        const suggestionsHtml = suggestions
+          .slice(0, 8) // Показываем максимум 8 кандидатов
+          .map(s => `<div class="suggestion-item-hover" data-word="${this.escapeAttr(s)}">${s}</div>`)
+          .join('');
+
+        tooltip.innerHTML = `
+          <div class="tooltip-header-hover">
+            <strong>${word}</strong> — ошибка
+          </div>
+          <div class="suggestions-list-hover">
+            <div class="suggestion-label">Возможные замены:</div>
+            ${suggestionsHtml}
+          </div>
+          <div class="tooltip-footer-hover">
+            Кликните для замены
+          </div>
+        `;
+
+        // Добавляем обработчики на элементы списка
+        tooltip.querySelectorAll('.suggestion-item-hover').forEach(el => {
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const replacement = el.dataset.word;
+            logger.log(`Выбрана замена: "${replacement}"`);
+            this.replaceWord(replacement);
+            this.hideTooltip();
+          });
+        });
+      }
+
+      tooltip.style.display = 'block';
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+      tooltip.classList.add('tooltip-hover');
+
+      this.adjustTooltipPosition(tooltip);
+    }, this.hoverTooltipDelay);
+  }
+
+  hideTooltipOnHover() {
+    if (this.hoverTooltipTimer) {
+      clearTimeout(this.hoverTooltipTimer);
+      this.hoverTooltipTimer = null;
+    }
+    this.hideTooltip();
   }
 
   escapeAttr(string) {

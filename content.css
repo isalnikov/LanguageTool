@@ -134,6 +134,95 @@
 }
 
 /* ============================================
+   Tooltip для hover (быстрые подсказки)
+   ============================================ */
+
+.spell-check-tooltip.tooltip-hover {
+  min-width: 180px;
+  max-width: 300px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+
+.spell-check-tooltip.tooltip-hover .tooltip-header-hover {
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.spell-check-tooltip.tooltip-hover .tooltip-header-hover strong {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestions-list-hover {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestion-label {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestion-item-hover {
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  color: #333;
+  font-size: 13px;
+  border-left: 3px solid transparent;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestion-item-hover:hover {
+  background-color: #f0f7ff;
+  border-left-color: #667eea;
+  color: #667eea;
+  padding-left: 18px;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestion-item-hover:active {
+  background-color: #e0e8ff;
+}
+
+.spell-check-tooltip.tooltip-hover .tooltip-footer-hover {
+  padding: 8px 14px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Скроллбар для hover tooltip */
+.spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar {
+  width: 5px;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* ============================================
    Popup для замены слов
    ============================================ */
 
@@ -446,6 +535,49 @@
   
   .spell-check-tooltip .no-suggestions {
     color: #888;
+  }
+  
+  /* Hover tooltip в тёмной теме */
+  .spell-check-tooltip.tooltip-hover {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .tooltip-header-hover {
+    background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+  }
+  
+  .spell-check-tooltip.tooltip-hover .suggestion-label {
+    color: #aaa;
+    border-bottom-color: #404040;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .suggestion-item-hover {
+    color: #e0e0e0;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .suggestion-item-hover:hover {
+    background-color: #3d3d3d;
+    border-left-color: #5a67d8;
+    color: #5a67d8;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .tooltip-footer-hover {
+    background: #3d3d3d;
+    border-top-color: #404040;
+    color: #aaa;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-track {
+    background: #2d2d2d;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-thumb {
+    background: #555;
+  }
+  
+  .spell-check-tooltip.tooltip-hover .suggestions-list-hover::-webkit-scrollbar-thumb:hover {
+    background: #666;
   }
   
   .spell-check-popup .popup-content {
