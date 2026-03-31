@@ -244,45 +244,57 @@ class SpellChecker {
   checkWord(word) {
     return new Promise((resolve) => {
       const startTime = Date.now();
-      
-      chrome.runtime.sendMessage(
-        { type: 'CHECK_WORD', word },
-        (response) => {
-          const duration = Date.now() - startTime;
-          
-          if (chrome.runtime.lastError) {
-            logger.error('Ошибка проверки слова:', chrome.runtime.lastError);
-            resolve({ isValid: true, lang: null });
-          } else {
-            logger.debug(`  Проверка "${word}": ${duration}ms, результат:`, response);
-            resolve(response);
+
+      try {
+        chrome.runtime.sendMessage(
+          { type: 'CHECK_WORD', word },
+          (response) => {
+            const duration = Date.now() - startTime;
+
+            if (chrome.runtime.lastError) {
+              logger.debug(`  Проверка "${word}": ошибка контекста (${chrome.runtime.lastError.message})`);
+              resolve({ isValid: true, lang: null });
+            } else {
+              logger.debug(`  Проверка "${word}": ${duration}ms, результат:`, response);
+              resolve(response);
+            }
           }
-        }
-      );
+        );
+      } catch (error) {
+        // Extension context invalidated - расширение перезагружено
+        logger.debug(`  Проверка "${word}": контекст недействителен (${error.message})`);
+        resolve({ isValid: true, lang: null });
+      }
     });
   }
 
   getSuggestions(word) {
     return new Promise((resolve) => {
       const startTime = Date.now();
-      
-      chrome.runtime.sendMessage(
-        { type: 'GET_SUGGESTIONS', word, limit: 15 },
-        (response) => {
-          const duration = Date.now() - startTime;
-          
-          if (chrome.runtime.lastError) {
-            logger.error('Ошибка получения подсказок:', chrome.runtime.lastError);
-            resolve([]);
-          } else {
-            logger.log(`  Подсказки для "${word}": ${duration}ms, найдено: ${response?.length || 0}`);
-            if (response && response.length > 0) {
-              logger.log(`  Варианты: [${response.join(', ')}]`);
+
+      try {
+        chrome.runtime.sendMessage(
+          { type: 'GET_SUGGESTIONS', word, limit: 15 },
+          (response) => {
+            const duration = Date.now() - startTime;
+
+            if (chrome.runtime.lastError) {
+              logger.debug(`  Подсказки для "${word}": ошибка контекста (${chrome.runtime.lastError.message})`);
+              resolve([]);
+            } else {
+              logger.log(`  Подсказки для "${word}": ${duration}ms, найдено: ${response?.length || 0}`);
+              if (response && response.length > 0) {
+                logger.log(`  Варианты: [${response.join(', ')}]`);
+              }
+              resolve(response);
             }
-            resolve(response);
           }
-        }
-      );
+        );
+      } catch (error) {
+        // Extension context invalidated - расширение перезагружено
+        logger.debug(`  Подсказки для "${word}": контекст недействителен (${error.message})`);
+        resolve([]);
+      }
     });
   }
 
