@@ -222,18 +222,23 @@ class SpellChecker {
     );
 
     if (misspelled.length > 0) {
-      logger.warn(`Найдено ошибок: ${misspelled.length}`);
-      logger.warn(`Ошибочные слова: [${misspelled.map(m => m.word).join(', ')}]`);
+      logger.warn(`[CHECK] Найдено ошибок: ${misspelled.length}`);
+      logger.warn(`[CHECK] Ошибочные слова: [${misspelled.map(m => m.word).join(', ')}]`);
 
       // Создаём overlay для textarea и input type="text"
       const tagName = this.activeElement?.tagName?.toLowerCase();
       const inputType = this.activeElement?.type?.toLowerCase();
       
+      logger.log(`[CHECK] activeElement: ${tagName}${inputType ? `[${inputType}]` : ''}`);
+      
       if (tagName === 'textarea' || (tagName === 'input' && inputType === 'text')) {
+        logger.log('[CHECK] Вызываем highlightErrors...');
         this.highlightErrors(text, misspelled);
+      } else {
+        logger.warn(`[CHECK] Не создаём overlay: tagName=${tagName}, inputType=${inputType}`);
       }
     } else {
-      logger.log('✓ Ошибок не найдено');
+      logger.log('[CHECK] ✓ Ошибок не найдено');
     }
 
     // Обновляем debug панель
