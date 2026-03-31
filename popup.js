@@ -29,7 +29,15 @@ class PopupManager {
       clearLogsBtn: document.getElementById('clear-logs-btn'),
       clearIgnoreBtn: document.getElementById('clear-ignore-btn'),
       ignoreList: document.getElementById('ignore-list'),
-      preloadBtn: document.getElementById('preload-btn')
+      preloadBtn: document.getElementById('preload-btn'),
+      cacheStatsSection: document.getElementById('cache-stats-section'),
+      cacheWordsSize: document.getElementById('cache-words-size'),
+      cacheWordsHits: document.getElementById('cache-words-hits'),
+      cacheWordsRate: document.getElementById('cache-words-rate'),
+      cacheSuggestionsSize: document.getElementById('cache-suggestions-size'),
+      cacheSuggestionsHits: document.getElementById('cache-suggestions-hits'),
+      cacheSuggestionsRate: document.getElementById('cache-suggestions-rate'),
+      clearCacheStatsBtn: document.getElementById('clear-cache-stats-btn')
     };
   }
 
@@ -39,25 +47,55 @@ class PopupManager {
     this.elements.clearLogsBtn?.addEventListener('click', () => this.handleClearLogs());
     this.elements.clearIgnoreBtn?.addEventListener('click', () => this.handleClearIgnore());
     this.elements.preloadBtn?.addEventListener('click', () => this.handlePreload());
+    this.elements.clearCacheStatsBtn?.addEventListener('click', () => this.handleClearCacheStats());
   }
 
   async updateStatus() {
     try {
       const status = await this.sendMessage({ type: 'GET_STATUS' });
       console.log('[popup] Статус:', status);
-      
+
       const totalLoaded = status.totalLoaded || 0;
       const enLoaded = status.en?.loaded || false;
       const ruLoaded = status.ru?.loaded || false;
-      
+
       if (enLoaded || ruLoaded) {
         this.setReadyStatus(status);
       } else {
         this.setNotLoadedStatus(status);
       }
+      
+      // Обновляем статистику кэша
+      await this.updateCacheStats();
     } catch (error) {
       console.error('[popup] Ошибка получения статуса:', error);
       this.setErrorStatus();
+    }
+  }
+
+  async updateCacheStats() {
+    try {
+      const cacheStats = await this.sendMessage({ type: 'GET_CACHE_STATS' });
+      console.log('[popup] Статистика кэша:', cacheStats);
+
+      if (cacheStats.words && cacheStats.suggestions) {
+        // Показываем секцию кэша
+        this.elements.cacheStatsSection.style.display = 'block';
+        
+        // Статистика кэша слов
+        this.elements.cacheWordsSize.textContent = cacheStats.words.size.toLocaleString();
+        this.elements.cacheWordsHits.textContent = cacheStats.words.hits.toLocaleString();
+        this.elements.cacheWordsRate.textContent = cacheStats.words.hitRate;
+        
+        // Статистика кэша подсказок
+        this.elements.cacheSuggestionsSize.textContent = cacheStats.suggestions.size.toLocaleString();
+        this.elements.cacheSuggestionsHits.textContent = cacheStats.suggestions.hits.toLocaleString();
+        this.elements.cacheSuggestionsRate.textContent = cacheStats.suggestions.hitRate;
+      }
+    } catch (error) {
+      console.debug('[popup] Ошибка получения статистики кэша:', error);
+      // Кэш ещё не инициализирован, скрываем секцию
+      this.elements.cacheStatsSection.style.display = 'none';
     }
   }
 
@@ -178,6 +216,17 @@ class PopupManager {
     } catch (error) {
       console.error('[popup] Ошибка:', error);
       this.showToast('Ошибка очистки', 'error');
+    }
+  }
+
+  async handleClearCacheStats() {
+    try {
+      await this.sendMessage({ type: 'CLEAR_LRU_CACHE' });
+      this.showToast('LRU кэш очищен', 'success');
+      await this.updateCacheStats();
+    } catch (error) {
+      console.error('[popup] Ошибка:', error);
+      this.showToast('Ошибка очистки кэша', 'error');
     }
   }
 

@@ -13,6 +13,77 @@
 'use strict';
 
 // ============================================
+// LRUCache - кэш с вытеснением давно неиспользуемых элементов
+// ============================================
+
+class LRUCache {
+  constructor(maxSize = 10000) {
+    this.maxSize = maxSize;
+    this.cache = new Map();
+    this.hits = 0;
+    this.misses = 0;
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) {
+      this.misses++;
+      return undefined;
+    }
+    
+    // Перемещаем элемент в конец (как недавно использованный)
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    this.hits++;
+    return value;
+  }
+
+  set(key, value) {
+    // Если ключ уже есть, удаляем старое значение
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxSize) {
+      // Удаляем самый старый элемент (первый в Map)
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    
+    // Добавляем новый элемент в конец
+    this.cache.set(key, value);
+  }
+
+  has(key) {
+    return this.cache.has(key);
+  }
+
+  delete(key) {
+    return this.cache.delete(key);
+  }
+
+  clear() {
+    this.cache.clear();
+    this.hits = 0;
+    this.misses = 0;
+  }
+
+  size() {
+    return this.cache.size;
+  }
+
+  // Статистика кэша
+  getStats() {
+    const total = this.hits + this.misses;
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      hits: this.hits,
+      misses: this.misses,
+      hitRate: total > 0 ? ((this.hits / total) * 100).toFixed(2) + '%' : '0%'
+    };
+  }
+}
+
+// ============================================
 // Logger
 // ============================================
 
@@ -571,10 +642,16 @@ const DictionaryLoader = (function() {
 })();
 
 // ============================================
-// SpellChecker - проверка слов с логированием
+// SpellChecker - проверка слов с логированием и LRU кэшем
 // ============================================
 
 const SpellChecker = (function() {
+  // LRU кэш для часто используемых слов (10000 слов)
+  const wordCache = new LRUCache(10000);
+  
+  // Кэш для подсказок (5000 запросов)
+  const suggestionsCache = new LRUCache(5000);
+  
   /**
    * Автоопределение языка
    */
@@ -587,30 +664,30 @@ const SpellChecker = (function() {
   }
 
   /**
-   * Проверка слова с логированием времени
+   * Проверка слова с кэшированием
    */
   async function checkWord(word) {
     const startTime = Date.now();
-    
-    if (!word || word.trim() === '') {
-      return { isValid: true, lang: null };
-    }
-
-    const normalizedWord = word.trim();
+    const normalizedWord = word.trim().toLowerCase();
     const lang = detectLanguage(normalizedWord);
-
+    
     if (!lang) {
       return { isValid: true, lang: null };
     }
-
-    // Проверяем, загружен ли словарь
-    let loadTime = 0;
+    
+    // Проверяем LRU кэш первым делом
+    const cachedResult = wordCache.get(normalizedWord);
+    if (cachedResult !== undefined) {
+      const duration = Date.now() - startTime;
+      logger.log(`✓ [LRU HIT] "${normalizedWord}" (${lang}): ${cachedResult ? 'ВЕРНО' : 'ОШИБКА'} за ${duration}ms`);
+      return { isValid: cachedResult, lang };
+    }
+    
     if (!DictionaryLoader.isLoaded(lang)) {
       const loadStart = Date.now();
       logger.log(`📚 Словарь ${lang} не загружен, начинаем загрузку...`);
       await DictionaryLoader.loadDictionary(lang);
-      loadTime = Date.now() - loadStart;
-      logger.log(`⏱️ Время загрузки словаря ${lang}: ${loadTime}ms`);
+      logger.log(`⏱️ Время загрузки словаря ${lang}: ${Date.now() - loadStart}ms`);
     }
 
     const trie = DictionaryLoader.getTrie(lang);
@@ -623,15 +700,18 @@ const SpellChecker = (function() {
     const isValid = trie.has(normalizedWord);
     const checkTime = Date.now() - checkStart;
     
+    // Сохраняем результат в LRU кэш
+    wordCache.set(normalizedWord, isValid);
+    
     const totalTime = Date.now() - startTime;
     
-    logger.log(`✓ Проверка "${normalizedWord}" (${lang}): ${isValid ? '✓ ВЕРНО' : '✗ ОШИБКА'} | Общее время: ${totalTime}ms${loadTime > 0 ? ` (загрузка: ${loadTime}ms, проверка: ${checkTime}ms)` : `, проверка: ${checkTime}ms`}`);
+    logger.log(`✓ Проверка "${normalizedWord}" (${lang}): ${isValid ? '✓ ВЕРНО' : '✗ ОШИБКА'} | Общее время: ${totalTime}ms, проверка: ${checkTime}ms`);
 
     return { isValid, lang };
   }
 
   /**
-   * Получение подсказок с логированием времени
+   * Получение подсказок с кэшированием
    */
   async function getSuggestions(word, limit = 10) {
     const startTime = Date.now();
@@ -641,12 +721,23 @@ const SpellChecker = (function() {
       return [];
     }
 
-    const prefix = word.trim();
+    const prefix = word.trim().toLowerCase();
     const lang = detectLanguage(prefix);
     
     if (!lang) {
       logger.log(`⏱️ getSuggestions: не определён язык для "${prefix}", возврат [] за ${Date.now() - startTime}ms`);
       return [];
+    }
+    
+    // Проверяем кэш подсказок
+    const cachedSuggestions = suggestionsCache.get(prefix);
+    if (cachedSuggestions !== undefined) {
+      const duration = Date.now() - startTime;
+      logger.log(`💡 [LRU HIT] Подсказки для "${prefix}" (${lang}): найдено ${cachedSuggestions.length} слов за ${duration}ms (из кэша)`);
+      if (cachedSuggestions.length > 0) {
+        logger.log(`   Варианты: [${cachedSuggestions.slice(0, 5).join(', ')}${cachedSuggestions.length > 5 ? '...' : ''}]`);
+      }
+      return cachedSuggestions;
     }
 
     // Проверяем, загружен ли словарь
@@ -673,17 +764,20 @@ const SpellChecker = (function() {
     // Дополнительная фильтрация: убираем точное совпадение с исходным словом
     suggestions = suggestions.filter(s => s !== prefix.toLowerCase());
 
+    // Сохраняем в кэш подсказок
+    suggestionsCache.set(prefix, suggestions);
+
     const totalTime = Date.now() - startTime;
-    
+
     logger.log(`💡 Подсказки для "${prefix}" (${lang}): найдено ${suggestions.length} слов за ${totalTime}ms${loadTime > 0 ? ` (загрузка: ${loadTime}ms, поиск: ${searchTime}ms)` : `, поиск: ${searchTime}ms`}`);
-    
+
     if (suggestions.length > 0) {
       logger.log(`   Варианты: [${suggestions.slice(0, 5).join(', ')}${suggestions.length > 5 ? '...' : ''}]`);
     }
 
     return suggestions;
   }
-  
+
   return {
     checkWord,
     getSuggestions
@@ -748,7 +842,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'CLEAR_CACHE':
       DictionaryLoader.clearCache();
-      logger.log('→ CLEAR_CACHE: Кэш очищен');
+      logger.log('→ CLEAR_CACHE: Кэш словарей очищен');
+      sendResponse({ success: true });
+      return true;
+
+    case 'GET_CACHE_STATS':
+      const stats = {
+        words: wordCache.getStats(),
+        suggestions: suggestionsCache.getStats()
+      };
+      logger.log(`→ GET_CACHE_STATS:`, stats);
+      sendResponse(stats);
+      return true;
+
+    case 'CLEAR_LRU_CACHE':
+      wordCache.clear();
+      suggestionsCache.clear();
+      logger.log('→ CLEAR_LRU_CACHE: LRU кэш очищен');
       sendResponse({ success: true });
       return true;
 

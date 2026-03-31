@@ -56,6 +56,42 @@
       </div>
     </section>
 
+    <!-- Статистика LRU кэша -->
+    <section class="cache-stats-section" id="cache-stats-section" style="display: none;">
+      <h3 class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        LRU кэш производительности
+      </h3>
+      <div class="cache-stats-grid">
+        <div class="cache-stat-card">
+          <div class="cache-stat-label">Слов в кэше</div>
+          <div class="cache-stat-value" id="cache-words-size">0</div>
+          <div class="cache-stat-detail">из 10000</div>
+        </div>
+        <div class="cache-stat-card">
+          <div class="cache-stat-label">Попаданий</div>
+          <div class="cache-stat-value" id="cache-words-hits">0</div>
+          <div class="cache-stat-detail" id="cache-words-rate">0%</div>
+        </div>
+        <div class="cache-stat-card">
+          <div class="cache-stat-label">Подсказок в кэше</div>
+          <div class="cache-stat-value" id="cache-suggestions-size">0</div>
+          <div class="cache-stat-detail">из 5000</div>
+        </div>
+        <div class="cache-stat-card">
+          <div class="cache-stat-label">Попаданий подсказок</div>
+          <div class="cache-stat-value" id="cache-suggestions-hits">0</div>
+          <div class="cache-stat-detail" id="cache-suggestions-rate">0%</div>
+        </div>
+      </div>
+      <button class="btn btn-text" id="clear-cache-stats-btn">
+        Очистить кэш производительности
+      </button>
+    </section>
+
     <!-- Действия -->
     <section class="actions-section">
       <button class="btn btn-primary" id="preload-btn">
