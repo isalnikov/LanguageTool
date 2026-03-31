@@ -219,18 +219,18 @@ class SpellChecker {
     this.misspelledWords = new Map(
       misspelled.map(m => [m.word, m])
     );
-    
+
     if (misspelled.length > 0) {
       logger.warn(`Найдено ошибок: ${misspelled.length}`);
       logger.warn(`Ошибочные слова: [${misspelled.map(m => m.word).join(', ')}]`);
-      
-      if (this.activeElement.tagName.toLowerCase() === 'textarea') {
+
+      if (this.activeElement && this.activeElement.tagName?.toLowerCase() === 'textarea') {
         this.highlightErrors(text, misspelled);
       }
     } else {
       logger.log('✓ Ошибок не найдено');
     }
-    
+
     // Обновляем debug панель
     this.updateDebugPanel();
   }

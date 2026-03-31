@@ -642,16 +642,17 @@ const DictionaryLoader = (function() {
 })();
 
 // ============================================
+// LRU кэши для SpellChecker (глобальные)
+// ============================================
+
+const wordCache = new LRUCache(10000);
+const suggestionsCache = new LRUCache(5000);
+
+// ============================================
 // SpellChecker - проверка слов с логированием и LRU кэшем
 // ============================================
 
 const SpellChecker = (function() {
-  // LRU кэш для часто используемых слов (10000 слов)
-  const wordCache = new LRUCache(10000);
-  
-  // Кэш для подсказок (5000 запросов)
-  const suggestionsCache = new LRUCache(5000);
-  
   /**
    * Автоопределение языка
    */
