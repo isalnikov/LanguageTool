@@ -173,25 +173,29 @@ const Trie = (function() {
      * Нечёткий поиск слов с опечатками
      * Ищет слова с расстоянием Левенштейна <= maxDistance
      * Возвращает результаты отсортированные по расстоянию (лучшие первыми)
+     * Исключает точное совпадение с искомым словом
      */
     findFuzzy(word, limit = 10, maxDistance = 2) {
       if (!word || word.trim() === '') return [];
-      
+
       const normalizedWord = word.toLowerCase().trim();
       const results = [];
-      
+
       // Поиск с обходом дерева и вычислением расстояния
       this._fuzzySearch(this.root, '', normalizedWord, maxDistance, results, limit * 3);
-      
+
+      // Фильтруем: убираем точное совпадение с искомым словом
+      const filteredResults = results.filter(r => r.word !== normalizedWord);
+
       // Сортируем по расстоянию Левенштейна (меньше = лучше)
-      results.sort((a, b) => {
+      filteredResults.sort((a, b) => {
         const distA = this._levenshteinDistance(a.word, normalizedWord);
         const distB = this._levenshteinDistance(b.word, normalizedWord);
         return distA - distB;
       });
-      
+
       // Возвращаем только слова (без расстояния) и ограничиваем лимит
-      return results.slice(0, limit).map(r => r.word);
+      return filteredResults.slice(0, limit).map(r => r.word);
     }
 
     _fuzzySearch(node, currentWord, targetWord, maxDistance, results, maxResults) {
@@ -248,21 +252,23 @@ const Trie = (function() {
 
     /**
      * Умный поиск: сначала по префиксу, потом нечёткий
+     * Исключает точное совпадение с искомым словом
      */
     findSuggestions(word, limit = 10) {
       if (!word || word.trim() === '') return [];
-      
+
       const normalizedWord = word.toLowerCase().trim();
-      
+
       logger.debug(`findSuggestions: "${normalizedWord}"`);
-      
+
       // Сначала пробуем поиск по префиксу
       const prefixResults = this.findByPrefix(normalizedWord, limit);
       if (prefixResults.length > 0) {
         logger.debug(`  → найдено по префиксу: ${prefixResults.length}`);
-        return prefixResults;
+        // Фильтруем точное совпадение
+        return prefixResults.filter(w => w !== normalizedWord);
       }
-      
+
       // Если не найдено - нечёткий поиск
       logger.debug(`  → поиск по префиксу не дал результатов, используем fuzzy...`);
       const fuzzyResults = this.findFuzzy(normalizedWord, limit, 2);
@@ -577,11 +583,14 @@ const SpellChecker = (function() {
     
     // Умный поиск: префикс + нечёткий
     const startTime = Date.now();
-    const suggestions = trie.findSuggestions(prefix.toLowerCase(), limit);
+    let suggestions = trie.findSuggestions(prefix.toLowerCase(), limit);
     const duration = Date.now() - startTime;
-    
+
+    // Дополнительная фильтрация: убираем точное совпадение с исходным словом
+    suggestions = suggestions.filter(s => s !== prefix.toLowerCase());
+
     logger.log(`findSuggestions("${prefix}", ${lang}): ${duration}ms, найдено: ${suggestions.length}`);
-    
+
     return suggestions;
   }
   
@@ -673,26 +682,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 function createContextMenu() {
   logger.log('Создание контекстного меню...');
-  
-  chrome.contextMenus.create({
-    id: 'languagetool-replace',
-    title: 'Заменить на "%s"',
-    contexts: ['selection']
+
+  // Сначала удаляем старые пункты меню (чтобы избежать дубликатов)
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'languagetool-replace',
+      title: 'Заменить на "%s"',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'languagetool-suggestions',
+      title: 'Предложения для "%s"',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'languagetool-ignore',
+      title: 'Пропустить слово',
+      contexts: ['selection']
+    });
+
+    logger.log('✓ Контекстное меню создано');
   });
-  
-  chrome.contextMenus.create({
-    id: 'languagetool-suggestions',
-    title: 'Предложения для "%s"',
-    contexts: ['selection']
-  });
-  
-  chrome.contextMenus.create({
-    id: 'languagetool-ignore',
-    title: 'Пропустить слово',
-    contexts: ['selection']
-  });
-  
-  logger.log('✓ Контекстное меню создано');
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

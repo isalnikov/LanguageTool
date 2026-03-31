@@ -287,14 +287,19 @@ class SpellChecker {
   }
 
   highlightErrors(text, misspelled) {
+    if (!this.activeElement) {
+      logger.warn('highlightErrors: нет активного элемента');
+      return;
+    }
+
     let overlay = this.activeElement.parentElement?.querySelector('.spell-check-overlay');
-    
+
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.className = 'spell-check-overlay';
       this.activeElement.parentElement?.insertBefore(overlay, this.activeElement);
     }
-    
+
     this.syncOverlayStyles(this.activeElement, overlay);
     this.renderErrors(overlay, text, misspelled);
   }
